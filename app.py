@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 # Generate random time series data
 time_series = np.random.randn(100)
 
