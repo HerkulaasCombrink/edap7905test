@@ -20,13 +20,12 @@ if st.button("Test this"):
         "steps": 200,
         "duration": 100  # Duration of simulation in seconds
     }
-
 # Agent class
-class Agent:
-    def __init__(self, unique_id, belief_status, epsilon):
-        self.unique_id = unique_id
-        self.belief_status = belief_status  # "believer", "skeptic", "neutral", "influencer"
-        self.epsilon = epsilon  # Exploration-exploitation trade-off
+        class Agent:
+            def __init__(self, unique_id, belief_status, epsilon):
+            self.unique_id = unique_id
+            self.belief_status = belief_status  # "believer", "skeptic", "neutral", "influencer"
+            self.epsilon = epsilon  # Exploration-exploitation trade-off
 
     def interact(self, neighbors, misinformation_spread_prob, fact_check_prob):
         if random.random() < self.epsilon:
