@@ -15,7 +15,7 @@ def get_model_params():
     }
 
 # Simple Moving Average function for smoothing
-def moving_average(data, window_size=3):
+def moving_average(data, window_size=0):
     if len(data) < window_size:
         return data
     return np.convolve(data, np.ones(window_size)/window_size, mode='valid')
