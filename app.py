@@ -6,7 +6,6 @@ import numpy as np
 #import time
 #import pygame
 
-st.header("This is mine")
 import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
@@ -52,17 +51,17 @@ class MisinformationModel:
         self.misinformation_spread_prob = params["misinformation_spread_prob"]
         self.fact_check_prob = params["fact_check_prob"]
         self.skeptic_ratio = params["skeptic_ratio"]
+        self.influencer_ratio = params["influencer_ratio"]
         self.epsilon = params["epsilon"]
         self.agents = {}
 
         for i in range(self.num_agents):
-            total_prob = 0.4 + params["skeptic_ratio"] + 0.4 + params["influencer_ratio"]
-belief_status = np.random.choice(
-    ["believer", "skeptic", "neutral", "influencer"],
-    p=[0.4 / total_prob, params["skeptic_ratio"] / total_prob, 
-       0.4 / total_prob, params["influencer_ratio"] / total_prob]
-)
-
+            total_prob = 0.4 + self.skeptic_ratio + 0.4 + self.influencer_ratio
+            belief_status = np.random.choice(
+                ["believer", "skeptic", "neutral", "influencer"],
+                p=[0.4 / total_prob, self.skeptic_ratio / total_prob, 
+                   0.4 / total_prob, self.influencer_ratio / total_prob]
+            )
             self.agents[i] = Agent(i, belief_status, self.epsilon)
 
         self.history = []
