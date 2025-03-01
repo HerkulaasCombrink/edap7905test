@@ -14,8 +14,8 @@ def get_model_params():
         "steps": st.sidebar.slider("Experiment Duration (Seconds)", 5, 100, 50),  # Duration of the experiment
     }
 
-# Simple Moving Average function for smoothing
-def moving_average(data, window_size=10):
+# Simple Moving Average function for smoothing - this is based on visualisation preferance
+def moving_average(data, window_size=2):
     if len(data) < window_size:
         return data
     return np.convolve(data, np.ones(window_size)/window_size, mode='valid')
