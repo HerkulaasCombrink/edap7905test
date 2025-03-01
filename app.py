@@ -11,7 +11,7 @@ def get_model_params():
         "N": st.sidebar.slider("Number of agents", 50, 500, 100),
         "initial_infected": st.sidebar.slider("Initial Number of Infected", 1, 10, 3),
         "infection_probability": st.sidebar.slider("Infection Probability", 0.0, 1.0, 0.5),
-        "steps": st.sidebar.slider("Experiment Duration (Seconds)", 5, 30, 10),  # Duration of the experiment
+        "steps": st.sidebar.slider("Experiment Duration (Seconds)", 5, 100, 50),  # Duration of the experiment
     }
 
 # Simple Moving Average function for smoothing
