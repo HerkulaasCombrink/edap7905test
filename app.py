@@ -9,103 +9,88 @@ import networkx as nx
 def get_model_params():
     return {
         "N": st.sidebar.slider("Number of agents", 50, 500, 100),
-        "misinformation_spread_prob": st.sidebar.slider("Misinformation Spread Probability", 0.0, 1.0, 0.3),
-        "skeptic_ratio": st.sidebar.slider("Skeptic Ratio", 0.0, 1.0, 0.2),
-        "influencer_ratio": st.sidebar.slider("Influencer Ratio", 0.0, 1.0, 0.1),
-        "fact_check_prob": st.sidebar.slider("Fact Check Probability", 0.0, 1.0, 0.1),
-        "epsilon": st.sidebar.slider("Epsilon (Exploration Rate)", 0.0, 1.0, 0.1),
-        "steps": 200,
-        "duration": 100  # Duration of simulation in seconds
+        "initial_infected": st.sidebar.slider("Initial Number of Infected", 1, 10, 3),
+        "infection_probability": st.sidebar.slider("Infection Probability", 0.0, 1.0, 0.5),
+        "steps": 10,  # Running for 10 seconds
     }
 
 # Agent class
 class Agent:
-    def __init__(self, unique_id, belief_status, epsilon):
+    def __init__(self, unique_id, status, size):
         self.unique_id = unique_id
-        self.belief_status = belief_status  # "believer", "skeptic", "neutral", "influencer"
-        self.epsilon = epsilon  # Exploration-exploitation trade-off
+        self.status = status  # "infected" or "susceptible"
+        self.size = size  # Determines susceptibility
+        self.infection_timer = 0  # Timer for conversion delay
 
-    def interact(self, neighbors, misinformation_spread_prob, fact_check_prob):
-        if random.random() < self.epsilon:
-            self.belief_status = random.choice(["believer", "skeptic", "neutral", "influencer"])
-        else:
+    def interact(self, neighbors, infection_probability):
+        if self.status == "infected":
             for neighbor in neighbors:
-                if self.belief_status == "believer" and neighbor.belief_status == "neutral":
-                    if np.random.random() < misinformation_spread_prob:
-                        neighbor.belief_status = "believer"
-                elif self.belief_status == "skeptic" and neighbor.belief_status == "believer":
-                    if np.random.random() < fact_check_prob:
-                        neighbor.belief_status = "neutral"
+                if neighbor.status == "susceptible":
+                    susceptibility_factor = 1.0 / neighbor.size  # Smaller nodes are more susceptible
+                    if random.random() < (infection_probability * susceptibility_factor):
+                        neighbor.infection_timer = self.size  # Delay based on size
 
-# Misinformation Model
-class MisinformationModel:
+    def update_status(self):
+        if self.status == "susceptible" and self.infection_timer > 0:
+            self.infection_timer -= 1
+            if self.infection_timer == 0:
+                self.status = "infected"
+
+# Disease Spread Model
+class DiseaseSpreadModel:
     def __init__(self, **params):
         self.num_agents = params["N"]
-        self.misinformation_spread_prob = params["misinformation_spread_prob"]
-        self.fact_check_prob = params["fact_check_prob"]
-        self.skeptic_ratio = params["skeptic_ratio"]
-        self.influencer_ratio = params["influencer_ratio"]
-        self.epsilon = params["epsilon"]
+        self.infection_probability = params["infection_probability"]
         self.G = nx.barabasi_albert_graph(self.num_agents, 3)
         self.agents = {}
-
-        for node in self.G.nodes():
-            total_prob = 0.4 + self.skeptic_ratio + 0.4 + self.influencer_ratio
-            belief_status = np.random.choice(
-                ["believer", "skeptic", "neutral", "influencer"],
-                p=[0.4 / total_prob, self.skeptic_ratio / total_prob, 
-                   0.4 / total_prob, self.influencer_ratio / total_prob]
-            )
-            self.agents[node] = Agent(node, belief_status, self.epsilon)
-
-        self.history = []
-        self.interaction_counts = []
+        
+        all_nodes = list(self.G.nodes())
+        initial_infected = random.sample(all_nodes, params["initial_infected"])  # Select initial infected nodes
+        
+        for node in all_nodes:
+            size = random.choice([1, 2, 3, 4])  # 1 (most susceptible) to 4 (least susceptible)
+            status = "infected" if node in initial_infected else "susceptible"
+            self.agents[node] = Agent(node, status, size)
+        
         self.node_positions = nx.spring_layout(self.G)  # Fix network shape
+        self.history = []
 
     def step(self, step_num):
-        interactions = 0
         for node, agent in self.agents.items():
             neighbors = [self.agents[n] for n in self.G.neighbors(node)]
-            prev_state = agent.belief_status
-            agent.interact(neighbors, self.misinformation_spread_prob, self.fact_check_prob)
-            if prev_state != agent.belief_status:
-                interactions += 1
-        self.interaction_counts.append(interactions)
+            agent.interact(neighbors, self.infection_probability)
+        
+        for agent in self.agents.values():
+            agent.update_status()
+        
+        self.history.append({node: agent.status for node, agent in self.agents.items()})
 
 # Visualization function
-def plot_visuals(G, agents, interactions, positions):
-    color_map = {"believer": "red", "skeptic": "blue", "neutral": "gray", "influencer": "green"}
-    node_colors = [color_map[agents[node].belief_status] for node in G.nodes()]
+def plot_visuals(G, agents, positions):
+    color_map = {"infected": "red", "susceptible": "gray"}
+    node_colors = [color_map[agents[node].status] for node in G.nodes()]
+    node_sizes = [agents[node].size * 50 for node in G.nodes()]  # Adjust node size by susceptibility
     
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-    
-    # Network plot (Fixed positions)
-    nx.draw(G, pos=positions, ax=axes[0], node_color=node_colors, with_labels=False, node_size=50, edge_color="gray")
-    axes[0].set_title("Misinformation Network")
-    
-    # Interaction time series
-    axes[1].plot(interactions, color="black", linewidth=1.0)
-    axes[1].set_title("Misinformation Spread Over Time")
-    
-    plt.tight_layout()
+    fig, ax = plt.subplots(figsize=(6, 6))
+    nx.draw(G, pos=positions, ax=ax, node_color=node_colors, with_labels=False, node_size=node_sizes, edge_color="gray")
+    ax.set_title("Disease Spread Network")
     return fig
 
 # Streamlit App
-st.title("Agent-Based Misinformation Simulation with Network Visualization")
+st.title("Scale-Free Network Disease Spread Simulation")
 params = get_model_params()
 
 if st.button("Run Simulation"):
-    model = MisinformationModel(**params)
+    model = DiseaseSpreadModel(**params)
     progress_bar = st.progress(0)
     visual_plot = st.empty()
     
     for step_num in range(1, params["steps"] + 1):
         model.step(step_num)
         progress_bar.progress(step_num / params["steps"])
-        fig = plot_visuals(model.G, model.agents, model.interaction_counts, model.node_positions)
+        fig = plot_visuals(model.G, model.agents, model.node_positions)
         visual_plot.pyplot(fig)
     
     st.write("Simulation Complete.")
-
 if st.button("Test this"):
   time_series = np.random.randn(100)
