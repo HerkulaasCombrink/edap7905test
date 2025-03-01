@@ -102,7 +102,8 @@ if st.button("Run Simulation"):
     for step_num in range(1, params["steps"] + 1):
         model.step(step_num)
         progress_bar.progress(step_num / params["steps"])
-        visual_plot.pyplot(plot_visuals(model.G, model.agents, model.interaction_counts, model.node_positions))
+        fig = plot_visuals(model.G, model.agents, model.interaction_counts, model.node_positions)
+        visual_plot.pyplot(fig)
     
     st.write("Simulation Complete.")
 
