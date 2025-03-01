@@ -11,7 +11,7 @@ def get_model_params():
         "N": st.sidebar.slider("Number of agents", 50, 500, 100),
         "initial_infected": st.sidebar.slider("Initial Number of Infected", 1, 10, 3),
         "infection_probability": st.sidebar.slider("Infection Probability", 0.0, 1.0, 0.5),
-        "steps": st.sidebar.slider("Experiment Duration (Seconds)", 5, 100, 50),  # Duration of the experiment
+        "steps": st.sidebar.slider("Experiment Duration (Seconds)", 5, 30, 10),  # Duration of the experiment
     }
 
 # Simple Moving Average function for smoothing
@@ -107,7 +107,7 @@ def plot_visuals(G, agents, positions, infections, alive_counts, dead_counts):
     axes[0, 0].set_title("Disease Spread Network")
     
     # Infection time series plot
-    axes[0, 1].plot(moving_average(infections), color="black", linewidth=1.5)
+    axes[0, 1].plot(moving_average(infections), color="red", linewidth=1.5)
     axes[0, 1].set_title("Infection Spread Over Time")
     axes[0, 1].set_xlabel("Time (Seconds)")
     axes[0, 1].set_ylabel("New Infections per Step")
@@ -143,11 +143,6 @@ if st.button("Run Simulation"):
         visual_plot.pyplot(fig)
     
     st.write("Simulation Complete.")
-
-    
-    st.write("Simulation Complete.")
-
-
 
 if st.button("Test this"):
   time_series = np.random.randn(100)
