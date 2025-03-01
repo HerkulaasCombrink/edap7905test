@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 import time
+import networkx as nx
 
 # Initialize simulation parameters
 def get_model_params():
@@ -45,16 +46,17 @@ class MisinformationModel:
         self.skeptic_ratio = params["skeptic_ratio"]
         self.influencer_ratio = params["influencer_ratio"]
         self.epsilon = params["epsilon"]
+        self.G = nx.barabasi_albert_graph(self.num_agents, 3)
         self.agents = {}
 
-        for i in range(self.num_agents):
+        for node in self.G.nodes():
             total_prob = 0.4 + self.skeptic_ratio + 0.4 + self.influencer_ratio
             belief_status = np.random.choice(
                 ["believer", "skeptic", "neutral", "influencer"],
                 p=[0.4 / total_prob, self.skeptic_ratio / total_prob, 
                    0.4 / total_prob, self.influencer_ratio / total_prob]
             )
-            self.agents[i] = Agent(i, belief_status, self.epsilon)
+            self.agents[node] = Agent(node, belief_status, self.epsilon)
 
         self.history = []
         self.interaction_counts = []
@@ -64,8 +66,8 @@ class MisinformationModel:
         self.history.append(new_state)
         interactions = 0
 
-        for agent in self.agents.values():
-            neighbors = random.sample(list(self.agents.values()), min(5, len(self.agents)))
+        for node, agent in self.agents.items():
+            neighbors = [self.agents[n] for n in self.G.neighbors(node)]
             prev_state = agent.belief_status
             agent.interact(neighbors, self.misinformation_spread_prob, self.fact_check_prob)
             if prev_state != agent.belief_status:
@@ -73,14 +75,24 @@ class MisinformationModel:
         
         self.interaction_counts.append(interactions)
 
+# Visualization function
+def plot_network(G, agents):
+    color_map = {"believer": "red", "skeptic": "blue", "neutral": "gray", "influencer": "green"}
+    node_colors = [color_map[agents[node].belief_status] for node in G.nodes()]
+    
+    fig, ax = plt.subplots()
+    nx.draw(G, ax=ax, node_color=node_colors, with_labels=False, node_size=50, edge_color="gray")
+    st.pyplot(fig)
+
 # Streamlit App
-st.title("Agent-Based Misinformation Simulation")
+st.title("Agent-Based Misinformation Simulation with Network Visualization")
 params = get_model_params()
 
 if st.button("Run Simulation"):
     model = MisinformationModel(**params)
     progress_bar = st.progress(0)
     chart = st.empty()
+    network_plot = st.empty()
     
     for step_num in range(1, params["steps"] + 1):
         model.step(step_num)
@@ -93,6 +105,8 @@ if st.button("Run Simulation"):
         ax.set_title("Tracking Misinformation Spread")
         ax.legend()
         chart.pyplot(fig)
+        
+        network_plot.pyplot(plot_network(model.G, model.agents))
     
     st.write("Simulation Complete.")
 if st.button("Test this"):
