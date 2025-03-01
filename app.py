@@ -5,7 +5,7 @@ import random
 import time
 import networkx as nx
 
-# Initialize simulation parameters
+# Initialize simulation parameters - this you should edit to your needs
 def get_model_params():
     return {
         "N": st.sidebar.slider("Number of agents", 50, 500, 100),
