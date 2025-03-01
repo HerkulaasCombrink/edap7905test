@@ -147,7 +147,7 @@ def plot_visuals(G, agents, positions, infections, alive_counts, dead_counts):
     # Dead time series plot
     axes[1, 1].plot(moving_average(dead_counts), color="blue", linewidth=1.5)
     axes[1, 1].set_title("New Dead Per Step")
-    axes[1, 1].set_xlabel("Time (Seconds)")
+    axes[1, 1].set_xlabel("Time (Seconds")
     axes[1, 1].set_ylabel("Dead Count Per Step")
     
     plt.tight_layout()
@@ -158,6 +158,7 @@ st.title("Scale-Free Network Disease Spread Simulation")
 params = get_model_params()
 
 if st.button("Run Simulation"):
+    st.markdown("<script>window.scrollTo(0, document.body.scrollHeight);</script>", unsafe_allow_html=True)
     model = DiseaseSpreadModel(**params)
     progress_bar = st.progress(0)
     visual_plot = st.empty()
