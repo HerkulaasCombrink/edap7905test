@@ -60,6 +60,7 @@ class MisinformationModel:
 
         self.history = []
         self.interaction_counts = []
+        self.node_positions = nx.spring_layout(self.G)  # Fix network shape
 
     def step(self, step_num):
         interactions = 0
@@ -72,24 +73,22 @@ class MisinformationModel:
         self.interaction_counts.append(interactions)
 
 # Visualization function
-def plot_visuals(G, agents, interactions):
+def plot_visuals(G, agents, interactions, positions):
     color_map = {"believer": "red", "skeptic": "blue", "neutral": "gray", "influencer": "green"}
     node_colors = [color_map[agents[node].belief_status] for node in G.nodes()]
     
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
     
-    # Network plot
-    nx.draw(G, ax=axes[0], node_color=node_colors, with_labels=False, node_size=50, edge_color="gray")
+    # Network plot (Fixed positions)
+    nx.draw(G, pos=positions, ax=axes[0], node_color=node_colors, with_labels=False, node_size=50, edge_color="gray")
     axes[0].set_title("Misinformation Network")
     
     # Interaction time series
     axes[1].plot(interactions, color="black", linewidth=1.0)
-    axes[1].set_xlabel("Simulation Steps")
-    axes[1].set_ylabel("Interactions")
     axes[1].set_title("Misinformation Spread Over Time")
     
     plt.tight_layout()
-    st.pyplot(fig)
+    return fig
 
 # Streamlit App
 st.title("Agent-Based Misinformation Simulation with Network Visualization")
@@ -103,8 +102,9 @@ if st.button("Run Simulation"):
     for step_num in range(1, params["steps"] + 1):
         model.step(step_num)
         progress_bar.progress(step_num / params["steps"])
-        visual_plot.pyplot(plot_visuals(model.G, model.agents, model.interaction_counts))
+        visual_plot.pyplot(plot_visuals(model.G, model.agents, model.interaction_counts, model.node_positions))
     
     st.write("Simulation Complete.")
+
 if st.button("Test this"):
   time_series = np.random.randn(100)
