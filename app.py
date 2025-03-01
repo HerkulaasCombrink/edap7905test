@@ -2,9 +2,9 @@ import streamlit as st
 #import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
-import random
-import time
-import pygame
+#import random
+#import time
+#import pygame
 
 st.header("This is mine")
 # Generate random time series data
