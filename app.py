@@ -8,7 +8,11 @@ import pygame
 
 st.header("This is mine")
 
-def get_model_params():
+
+
+# Generate random time series data
+if st.button("Test this"):
+    def get_model_params():
     return {
         "N": st.sidebar.slider("Number of agents", 50, 500, 100),
         "misinformation_spread_prob": st.sidebar.slider("Misinformation Spread Probability", 0.0, 1.0, 0.3),
@@ -19,9 +23,6 @@ def get_model_params():
         "steps": 200,
         "duration": 100  # Duration of simulation in seconds
     }
-
-# Generate random time series data
-if st.button("Test this"):
   time_series = np.random.randn(100)
 
 # Agent class
