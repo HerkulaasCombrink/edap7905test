@@ -52,6 +52,13 @@ class DiseaseSpreadModel:
             status = "infected" if node in initial_infected else "susceptible"
             self.agents[node] = Agent(node, status, size)
         
+        # Ensure all nodes start as gray (susceptible), except the specified infected nodes
+        for node in all_nodes:
+            if node not in initial_infected:
+                self.agents[node].status = "susceptible"
+            else:
+                self.agents[node].status = "infected"
+        
         self.node_positions = nx.spring_layout(self.G)  # Fix network shape
         self.history = []
 
@@ -90,6 +97,8 @@ if st.button("Run Simulation"):
         progress_bar.progress(step_num / params["steps"])
         fig = plot_visuals(model.G, model.agents, model.node_positions)
         visual_plot.pyplot(fig)
+    
+    st.write("Simulation Complete.")
     
     st.write("Simulation Complete.")
 if st.button("Test this"):
