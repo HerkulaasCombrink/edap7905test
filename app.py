@@ -18,9 +18,10 @@ def get_model_params():
 class Agent:
     def __init__(self, unique_id, status, size):
         self.unique_id = unique_id
-        self.status = status  # "infected" or "susceptible"
+        self.status = status  # "infected", "susceptible", "alive", "dead"
         self.size = size  # Determines susceptibility
         self.infection_timer = 0  # Timer for conversion delay
+        self.recovery_timer = 0  # Timer for turning green after infection
 
     def interact(self, neighbors, infection_probability):
         if self.status == "infected":
@@ -35,6 +36,11 @@ class Agent:
             self.infection_timer -= 1
             if self.infection_timer == 0:
                 self.status = "infected"
+                self.recovery_timer = 3  # Stay infected for 3 seconds before recovering
+        elif self.status == "infected" and self.recovery_timer > 0:
+            self.recovery_timer -= 1
+            if self.recovery_timer == 0:
+                self.status = "alive" if random.random() > 0.5 else "dead"  # 50% chance to turn blue (dead)
 
 # Disease Spread Model
 class DiseaseSpreadModel:
@@ -73,7 +79,7 @@ class DiseaseSpreadModel:
 
 # Visualization function
 def plot_visuals(G, agents, positions, infections):
-    color_map = {"infected": "red", "susceptible": "gray"}
+    color_map = {"infected": "red", "susceptible": "gray", "alive": "green", "dead": "blue"}
     node_colors = [color_map[agents[node].status] for node in G.nodes()]
     node_sizes = [agents[node].size * 50 for node in G.nodes()]  # Adjust node size by susceptibility
     
@@ -108,5 +114,6 @@ if st.button("Run Simulation"):
         visual_plot.pyplot(fig)
     
     st.write("Simulation Complete.")
+
 if st.button("Test this"):
   time_series = np.random.randn(100)
