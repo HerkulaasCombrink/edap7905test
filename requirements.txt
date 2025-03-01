@@ -1,3 +1,7 @@
 matplotlib
 numpy
 streamlit
+networkx
+random
+time
+pygame
