@@ -62,26 +62,33 @@ class MisinformationModel:
         self.interaction_counts = []
 
     def step(self, step_num):
-        new_state = {agent_id: agent.belief_status for agent_id, agent in self.agents.items()}
-        self.history.append(new_state)
         interactions = 0
-
         for node, agent in self.agents.items():
             neighbors = [self.agents[n] for n in self.G.neighbors(node)]
             prev_state = agent.belief_status
             agent.interact(neighbors, self.misinformation_spread_prob, self.fact_check_prob)
             if prev_state != agent.belief_status:
                 interactions += 1
-        
         self.interaction_counts.append(interactions)
 
 # Visualization function
-def plot_network(G, agents):
+def plot_visuals(G, agents, interactions):
     color_map = {"believer": "red", "skeptic": "blue", "neutral": "gray", "influencer": "green"}
     node_colors = [color_map[agents[node].belief_status] for node in G.nodes()]
     
-    fig, ax = plt.subplots()
-    nx.draw(G, ax=ax, node_color=node_colors, with_labels=False, node_size=50, edge_color="gray")
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    
+    # Network plot
+    nx.draw(G, ax=axes[0], node_color=node_colors, with_labels=False, node_size=50, edge_color="gray")
+    axes[0].set_title("Misinformation Network")
+    
+    # Interaction time series
+    axes[1].plot(interactions, color="black", linewidth=1.0)
+    axes[1].set_xlabel("Simulation Steps")
+    axes[1].set_ylabel("Interactions")
+    axes[1].set_title("Misinformation Spread Over Time")
+    
+    plt.tight_layout()
     st.pyplot(fig)
 
 # Streamlit App
@@ -91,22 +98,12 @@ params = get_model_params()
 if st.button("Run Simulation"):
     model = MisinformationModel(**params)
     progress_bar = st.progress(0)
-    chart = st.empty()
-    network_plot = st.empty()
+    visual_plot = st.empty()
     
     for step_num in range(1, params["steps"] + 1):
         model.step(step_num)
         progress_bar.progress(step_num / params["steps"])
-        
-        fig, ax = plt.subplots()
-        ax.plot(model.interaction_counts, label="Misinformation Interactions Over Time", color="red")
-        ax.set_xlabel("Simulation Steps")
-        ax.set_ylabel("Number of Interactions")
-        ax.set_title("Tracking Misinformation Spread")
-        ax.legend()
-        chart.pyplot(fig)
-        
-        network_plot.pyplot(plot_network(model.G, model.agents))
+        visual_plot.pyplot(plot_visuals(model.G, model.agents, model.interaction_counts))
     
     st.write("Simulation Complete.")
 if st.button("Test this"):
