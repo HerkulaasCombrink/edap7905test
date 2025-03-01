@@ -11,8 +11,14 @@ def get_model_params():
         "N": st.sidebar.slider("Number of agents", 50, 500, 100),
         "initial_infected": st.sidebar.slider("Initial Number of Infected", 1, 10, 3),
         "infection_probability": st.sidebar.slider("Infection Probability", 0.0, 1.0, 0.5),
-        "steps": st.sidebar.slider("Experiment Duration (Seconds)", 5, 80, 30),  # Duration of the experiment
+        "steps": st.sidebar.slider("Experiment Duration (Seconds)", 5, 30, 10),  # Duration of the experiment
     }
+
+# Simple Moving Average function for smoothing
+def moving_average(data, window_size=3):
+    if len(data) < window_size:
+        return data
+    return np.convolve(data, np.ones(window_size)/window_size, mode='valid')
 
 # Agent class
 class Agent:
@@ -101,19 +107,19 @@ def plot_visuals(G, agents, positions, infections, alive_counts, dead_counts):
     axes[0, 0].set_title("Disease Spread Network")
     
     # Infection time series plot
-    axes[0, 1].plot(infections, color="black", linewidth=1.0)
+    axes[0, 1].plot(moving_average(infections), color="black", linewidth=1.5)
     axes[0, 1].set_title("Infection Spread Over Time")
     axes[0, 1].set_xlabel("Time (Seconds)")
     axes[0, 1].set_ylabel("New Infections per Step")
     
     # Alive time series plot
-    axes[1, 0].plot(alive_counts, color="green", linewidth=1.0)
+    axes[1, 0].plot(moving_average(alive_counts), color="green", linewidth=1.5)
     axes[1, 0].set_title("New Alive Per Step")
     axes[1, 0].set_xlabel("Time (Seconds)")
     axes[1, 0].set_ylabel("Alive Count Per Step")
     
     # Dead time series plot
-    axes[1, 1].plot(dead_counts, color="blue", linewidth=1.0)
+    axes[1, 1].plot(moving_average(dead_counts), color="blue", linewidth=1.5)
     axes[1, 1].set_title("New Dead Per Step")
     axes[1, 1].set_xlabel("Time (Seconds)")
     axes[1, 1].set_ylabel("Dead Count Per Step")
@@ -135,6 +141,9 @@ if st.button("Run Simulation"):
         progress_bar.progress(step_num / params["steps"])
         fig = plot_visuals(model.G, model.agents, model.node_positions, model.infection_counts, model.alive_counts, model.dead_counts)
         visual_plot.pyplot(fig)
+    
+    st.write("Simulation Complete.")
+
     
     st.write("Simulation Complete.")
 
