@@ -7,6 +7,12 @@ import numpy as np
 #import pygame
 
 st.header("This is mine")
+import streamlit as st
+import matplotlib.pyplot as plt
+import numpy as np
+import random
+import time
+
 # Initialize simulation parameters
 def get_model_params():
     return {
@@ -50,8 +56,13 @@ class MisinformationModel:
         self.agents = {}
 
         for i in range(self.num_agents):
-            belief_status = np.random.choice(["believer", "skeptic", "neutral", "influencer"],
-                                             p=[0.4, self.skeptic_ratio, 0.4, params["influencer_ratio"]])
+            total_prob = 0.4 + params["skeptic_ratio"] + 0.4 + params["influencer_ratio"]
+belief_status = np.random.choice(
+    ["believer", "skeptic", "neutral", "influencer"],
+    p=[0.4 / total_prob, params["skeptic_ratio"] / total_prob, 
+       0.4 / total_prob, params["influencer_ratio"] / total_prob]
+)
+
             self.agents[i] = Agent(i, belief_status, self.epsilon)
 
         self.history = []
@@ -91,6 +102,6 @@ if st.button("Run Simulation"):
         model.step(step_num)
     plot_interactions(model)
     st.write("Simulation Complete.")
-# Generate random time series data
+
 if st.button("Test this"):
   time_series = np.random.randn(100)
