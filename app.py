@@ -72,19 +72,6 @@ class MisinformationModel:
                 interactions += 1
         
         self.interaction_counts.append(interactions)
-        
-        # Live progress update
-        st.line_chart(self.interaction_counts)
-
-# Visualization function
-def plot_interactions(model):
-    fig, ax = plt.subplots()
-    ax.plot(model.interaction_counts, label="Misinformation Interactions Over Time", color="red")
-    ax.set_xlabel("Simulation Steps")
-    ax.set_ylabel("Number of Interactions")
-    ax.set_title("Tracking Misinformation Spread")
-    ax.legend()
-    st.pyplot(fig)
 
 # Streamlit App
 st.title("Agent-Based Misinformation Simulation")
@@ -93,10 +80,20 @@ params = get_model_params()
 if st.button("Run Simulation"):
     model = MisinformationModel(**params)
     progress_bar = st.progress(0)
+    chart = st.empty()
+    
     for step_num in range(1, params["steps"] + 1):
         model.step(step_num)
         progress_bar.progress(step_num / params["steps"])
-    plot_interactions(model)
+        
+        fig, ax = plt.subplots()
+        ax.plot(model.interaction_counts, label="Misinformation Interactions Over Time", color="red")
+        ax.set_xlabel("Simulation Steps")
+        ax.set_ylabel("Number of Interactions")
+        ax.set_title("Tracking Misinformation Spread")
+        ax.legend()
+        chart.pyplot(fig)
+    
     st.write("Simulation Complete.")
 if st.button("Test this"):
   time_series = np.random.randn(100)
