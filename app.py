@@ -1,5 +1,5 @@
 import streamlit as st
-import networkx as nx
+#import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
 import random
