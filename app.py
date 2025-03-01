@@ -24,14 +24,12 @@ if st.button("Test this"):
         "duration": 100  # Duration of simulation in seconds
     }
   time_series = np.random.randn(100)
-
 # Agent class
 class Agent:
     def __init__(self, unique_id, belief_status, epsilon):
         self.unique_id = unique_id
         self.belief_status = belief_status  # "believer", "skeptic", "neutral", "influencer"
         self.epsilon = epsilon  # Exploration-exploitation trade-off
-
     def interact(self, neighbors, misinformation_spread_prob, fact_check_prob):
         if random.random() < self.epsilon:
             self.belief_status = random.choice(["believer", "skeptic", "neutral", "influencer"])
@@ -43,7 +41,6 @@ class Agent:
                 elif self.belief_status == "skeptic" and neighbor.belief_status == "believer":
                     if np.random.random() < fact_check_prob:
                         neighbor.belief_status = "neutral"
-
 # Misinformation Model
 class MisinformationModel:
     def __init__(self, **params):
@@ -54,29 +51,23 @@ class MisinformationModel:
         self.epsilon = params["epsilon"]
         self.G = nx.barabasi_albert_graph(self.num_agents, 3)
         self.agents = {}
-
         for i, node in enumerate(self.G.nodes()):
             belief_status = np.random.choice(["believer", "skeptic", "neutral", "influencer"],
                                              p=[0.4, self.skeptic_ratio, 0.4, params["influencer_ratio"]])
             self.agents[node] = Agent(i, belief_status, self.epsilon)
-
         self.history = []
         self.interaction_counts = []
-
     def step(self, step_num):
         new_state = {agent_id: agent.belief_status for agent_id, agent in self.agents.items()}
         self.history.append(new_state)
         interactions = 0
-
         for node, agent in self.agents.items():
             neighbors = [self.agents[n] for n in self.G.neighbors(node)]
             prev_state = agent.belief_status
             agent.interact(neighbors, self.misinformation_spread_prob, self.fact_check_prob)
             if prev_state != agent.belief_status:
                 interactions += 1
-        
         self.interaction_counts.append(interactions)
-
 # Visualization function
 def plot_interactions(model):
     fig, ax = plt.subplots()
@@ -86,7 +77,6 @@ def plot_interactions(model):
     ax.set_title("Tracking Misinformation Spread")
     ax.legend()
     st.pyplot(fig)
-
 # Plot the time series
   plt.plot(time_series)
   plt.title("Random 100-Unit Time Series")
