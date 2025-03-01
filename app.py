@@ -66,8 +66,8 @@ class DiseaseSpreadModel:
 
     def step(self, step_num):
         infections = 0
-        alive = sum(1 for agent in self.agents.values() if agent.status == "alive")
-        dead = sum(1 for agent in self.agents.values() if agent.status == "dead")
+        newly_alive = 0
+        newly_dead = 0
         
         for node, agent in self.agents.items():
             neighbors = [self.agents[n] for n in self.G.neighbors(node)]
@@ -78,10 +78,14 @@ class DiseaseSpreadModel:
             agent.update_status()
             if prev_status == "susceptible" and agent.status == "infected":
                 infections += 1
+            elif prev_status == "infected" and agent.status == "alive":
+                newly_alive += 1
+            elif prev_status == "infected" and agent.status == "dead":
+                newly_dead += 1
         
         self.infection_counts.append(infections)
-        self.alive_counts.append(alive)
-        self.dead_counts.append(dead)
+        self.alive_counts.append(newly_alive)
+        self.dead_counts.append(newly_dead)
         self.history.append({node: agent.status for node, agent in self.agents.items()})
 
 # Visualization function
@@ -104,15 +108,15 @@ def plot_visuals(G, agents, positions, infections, alive_counts, dead_counts):
     
     # Alive time series plot
     axes[1, 0].plot(alive_counts, color="green", linewidth=1.0)
-    axes[1, 0].set_title("Alive Over Time")
+    axes[1, 0].set_title("New Alive Per Step")
     axes[1, 0].set_xlabel("Time (Seconds)")
-    axes[1, 0].set_ylabel("Alive Count at Step")
+    axes[1, 0].set_ylabel("Alive Count Per Step")
     
     # Dead time series plot
     axes[1, 1].plot(dead_counts, color="blue", linewidth=1.0)
-    axes[1, 1].set_title("Dead Over Time")
+    axes[1, 1].set_title("New Dead Per Step")
     axes[1, 1].set_xlabel("Time (Seconds)")
-    axes[1, 1].set_ylabel("Dead Count at Step")
+    axes[1, 1].set_ylabel("Dead Count Per Step")
     
     plt.tight_layout()
     return fig
@@ -133,6 +137,7 @@ if st.button("Run Simulation"):
         visual_plot.pyplot(fig)
     
     st.write("Simulation Complete.")
+
 
 
 if st.button("Test this"):
