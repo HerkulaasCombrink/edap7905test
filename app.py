@@ -1,12 +1,4 @@
 import streamlit as st
-#import networkx as nx
-import matplotlib.pyplot as plt
-import numpy as np
-#import random
-#import time
-#import pygame
-
-import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
 import random
@@ -80,6 +72,9 @@ class MisinformationModel:
                 interactions += 1
         
         self.interaction_counts.append(interactions)
+        
+        # Live progress update
+        st.line_chart(self.interaction_counts)
 
 # Visualization function
 def plot_interactions(model):
@@ -97,10 +92,11 @@ params = get_model_params()
 
 if st.button("Run Simulation"):
     model = MisinformationModel(**params)
+    progress_bar = st.progress(0)
     for step_num in range(1, params["steps"] + 1):
         model.step(step_num)
+        progress_bar.progress(step_num / params["steps"])
     plot_interactions(model)
     st.write("Simulation Complete.")
-
 if st.button("Test this"):
   time_series = np.random.randn(100)
