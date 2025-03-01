@@ -66,8 +66,8 @@ class DiseaseSpreadModel:
 
     def step(self, step_num):
         infections = 0
-        alive = 0
-        dead = 0
+        alive = sum(1 for agent in self.agents.values() if agent.status == "alive")
+        dead = sum(1 for agent in self.agents.values() if agent.status == "dead")
         
         for node, agent in self.agents.items():
             neighbors = [self.agents[n] for n in self.G.neighbors(node)]
@@ -78,10 +78,6 @@ class DiseaseSpreadModel:
             agent.update_status()
             if prev_status == "susceptible" and agent.status == "infected":
                 infections += 1
-            elif agent.status == "alive":
-                alive += 1
-            elif agent.status == "dead":
-                dead += 1
         
         self.infection_counts.append(infections)
         self.alive_counts.append(alive)
@@ -110,13 +106,13 @@ def plot_visuals(G, agents, positions, infections, alive_counts, dead_counts):
     axes[1, 0].plot(alive_counts, color="green", linewidth=1.0)
     axes[1, 0].set_title("Alive Over Time")
     axes[1, 0].set_xlabel("Time (Seconds)")
-    axes[1, 0].set_ylabel("Alive Count per Step")
+    axes[1, 0].set_ylabel("Alive Count at Step")
     
     # Dead time series plot
     axes[1, 1].plot(dead_counts, color="blue", linewidth=1.0)
     axes[1, 1].set_title("Dead Over Time")
     axes[1, 1].set_xlabel("Time (Seconds)")
-    axes[1, 1].set_ylabel("Dead Count per Step")
+    axes[1, 1].set_ylabel("Dead Count at Step")
     
     plt.tight_layout()
     return fig
@@ -137,6 +133,7 @@ if st.button("Run Simulation"):
         visual_plot.pyplot(fig)
     
     st.write("Simulation Complete.")
+
 
 if st.button("Test this"):
   time_series = np.random.randn(100)
