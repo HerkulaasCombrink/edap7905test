@@ -1,7 +1,7 @@
 matplotlib
 numpy
 streamlit
-networkx
-random
-time
-pygame
+#networkx
+#random
+#time
+#pygame
