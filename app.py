@@ -8,7 +8,7 @@ import networkx as nx
 # Initialize simulation parameters
 def get_model_params():
     return {
-        "N": st.sidebar.slider("Number of agents", 50, 500, 100),
+        "N": st.sidebar.slider("Number of agents", 100, 700, 150),
         "initial_infected": st.sidebar.slider("Initial Number of Infected", 1, 10, 3),
         "infection_probability": st.sidebar.slider("Infection Probability", 0.0, 1.0, 0.5),
         "steps": st.sidebar.slider("Experiment Duration (Seconds)", 5, 100, 50),  # Duration of the experiment
