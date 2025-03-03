@@ -146,7 +146,7 @@ if st.button("Run Simulation"):
     st.write("Simulation Complete.")
 st.markdown(
     """
-    **Scale-Free Network Disease Spread Simulation**
+    **Employee Productivity and Performance Influence**
 
     This simulation models disease spread in a **scale-free network** using an agent-based approach. 
     Nodes represent individuals, where **red indicates infection, green represents recovery, and blue signifies death**. 
