@@ -59,12 +59,16 @@ st.write(f"**Conversion Rate for B:** {p_B:.2%}")
 st.write(f"**Z-Score:** {z_score:.2f}")
 st.write(f"**P-Value:** {p_value:.4f}")
 
-# Interpretation
+# Interpretation (Updates After Each Click)
 st.subheader("Conclusion")
 if p_value < 0.05:
-    st.success("Version B performs significantly better than Version A! ✅")
+    st.success("🚀 Version B performs significantly better than Version A! ✅ Keep using it!")
+elif p_value > 0.95:
+    st.error("⚠️ Version A is significantly better than Version B! Consider reverting.")
+elif st.session_state.visitors_A + st.session_state.visitors_B < 30:
+    st.info("📊 More data is needed to determine a clear winner. Keep testing!")
 else:
-    st.warning("No significant difference between A and B. Keep testing!")
+    st.warning("No significant difference between A and B. Continue monitoring.")
 
 # Visualization
 fig, ax = plt.subplots()
