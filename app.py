@@ -8,9 +8,9 @@ st.title("A/B Testing Click Demo")
 st.write("Click to simulate user actions and compare two versions (A & B).")
 
 # Initialize session state
-if "clicks_A" not in st.session_state:
-    st.session_state.clicks_A = 0
-    st.session_state.clicks_B = 0
+if "clicks_A2" not in st.session_state:
+    st.session_state.clicks_A2 = 0
+    st.session_state.clicks_B2 = 0
     st.session_state.visitors_A = 0
     st.session_state.visitors_B = 0
 
@@ -20,21 +20,21 @@ col1, col2 = st.columns(2)
 
 with col1:
     if st.button("Click Version A"):
-        st.session_state.clicks_A += 1
+        st.session_state.clicks_A2 += 1
     st.session_state.visitors_A += 1
-    st.write(f"Clicks: {st.session_state.clicks_A}")
+    st.write(f"Clicks: {st.session_state.clicks_A2}")
     st.write(f"Visitors: {st.session_state.visitors_A}")
 
 with col2:
     if st.button("Click Version B"):
-        st.session_state.clicks_B += 1
+        st.session_state.clicks_B2 += 1
     st.session_state.visitors_B += 1
-    st.write(f"Clicks: {st.session_state.clicks_B}")
+    st.write(f"Clicks: {st.session_state.clicks_B2}")
     st.write(f"Visitors: {st.session_state.visitors_B}")
 
 # Compute conversion rates
-rate_A = st.session_state.clicks_A / max(1, st.session_state.visitors_A)
-rate_B = st.session_state.clicks_B / max(1, st.session_state.visitors_B)
+rate_A = st.session_state.clicks_A2 / max(1, st.session_state.visitors_A)
+rate_B = st.session_state.clicks_B2 / max(1, st.session_state.visitors_B)
 
 def evaluate_ab_test(n_A, conv_A, n_B, conv_B):
     # Perform a two-proportion z-test
@@ -48,8 +48,8 @@ def evaluate_ab_test(n_A, conv_A, n_B, conv_B):
 
 # Perform A/B Test Analysis
 p_A, p_B, z_score, p_value = evaluate_ab_test(
-    st.session_state.visitors_A, st.session_state.clicks_A, 
-    st.session_state.visitors_B, st.session_state.clicks_B
+    st.session_state.visitors_A, st.session_state.clicks_A2, 
+    st.session_state.visitors_B, st.session_state.clicks_B2
 )
 
 # Display Results
@@ -82,9 +82,9 @@ st.title("A/B/C Testing Click Demo")
 st.write("Click to simulate user actions and compare three versions (A, B, & C).")
 
 # Initialize session state
-if "clicks_A" not in st.session_state:
-    st.session_state.clicks_A = 0
-    st.session_state.clicks_B = 0
+if "clicks_A2" not in st.session_state:
+    st.session_state.clicks_A2 = 0
+    st.session_state.clicks_B2 = 0
     st.session_state.clicks_C = 0
     st.session_state.visitors_A = 0
     st.session_state.visitors_B = 0
@@ -96,16 +96,16 @@ col1, col2, col3 = st.columns(3)
 
 with col1:
     if st.button("Click Version A"):
-        st.session_state.clicks_A += 1
+        st.session_state.clicks_A2 += 1
     st.session_state.visitors_A += 1
-    st.write(f"Clicks: {st.session_state.clicks_A}")
+    st.write(f"Clicks: {st.session_state.clicks_A2}")
     st.write(f"Visitors: {st.session_state.visitors_A}")
 
 with col2:
     if st.button("Click Version B"):
-        st.session_state.clicks_B += 1
+        st.session_state.clicks_B2 += 1
     st.session_state.visitors_B += 1
-    st.write(f"Clicks: {st.session_state.clicks_B}")
+    st.write(f"Clicks: {st.session_state.clicks_B2}")
     st.write(f"Visitors: {st.session_state.visitors_B}")
 
 with col3:
@@ -116,8 +116,8 @@ with col3:
     st.write(f"Visitors: {st.session_state.visitors_C}")
 
 # Compute conversion rates
-rate_A = st.session_state.clicks_A / max(1, st.session_state.visitors_A)
-rate_B = st.session_state.clicks_B / max(1, st.session_state.visitors_B)
+rate_A = st.session_state.clicks_A2 / max(1, st.session_state.visitors_A)
+rate_B = st.session_state.clicks_B2 / max(1, st.session_state.visitors_B)
 rate_C = st.session_state.clicks_C / max(1, st.session_state.visitors_C)
 
 def evaluate_abc_test(n_A, conv_A, n_B, conv_B, n_C, conv_C):
@@ -143,8 +143,8 @@ def evaluate_abc_test(n_A, conv_A, n_B, conv_B, n_C, conv_C):
 
 # Perform A/B/C Test Analysis
 p_A, p_B, p_C, z_AB, z_AC, z_BC, p_value_AB, p_value_AC, p_value_BC = evaluate_abc_test(
-    st.session_state.visitors_A, st.session_state.clicks_A, 
-    st.session_state.visitors_B, st.session_state.clicks_B,
+    st.session_state.visitors_A, st.session_state.clicks_A2, 
+    st.session_state.visitors_B, st.session_state.clicks_B2,
     st.session_state.visitors_C, st.session_state.clicks_C
 )
 
