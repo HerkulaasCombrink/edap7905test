@@ -1,72 +1,81 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.stats as stats
 
 # Title of the App
-st.title("Epsilon-Greedy Multi-Armed Bandit")
-st.write("Click to simulate user actions and let the algorithm dynamically learn which version (A or B) is better.")
+st.title("Multi-Armed Bandit: Epsilon-Greedy, Thompson Sampling, and UCB")
+st.write("Click to simulate user actions and let different algorithms dynamically learn which version (A, B, C, or D) is better.")
 
 # Parameters
-EPSILON = 0.1  # Exploration rate
+EPSILON = 0.1  # Exploration rate for Epsilon-Greedy
+ALPHA, BETA = 1, 1  # Parameters for Thompson Sampling
+C = 2  # Exploration factor for UCB
 
 # Initialize session state for MAB
-if "rewards_A" not in st.session_state:
-    st.session_state.rewards_A = 0
-    st.session_state.rewards_B = 0
-    st.session_state.visits_A = 0
-    st.session_state.visits_B = 0
+if "rewards" not in st.session_state:
+    st.session_state.rewards = {"A": 0, "B": 0, "C": 0, "D": 0}
+    st.session_state.visits = {"A": 0, "B": 0, "C": 0, "D": 0}
+    st.session_state.alpha = {"A": ALPHA, "B": ALPHA, "C": ALPHA, "D": ALPHA}
+    st.session_state.beta = {"A": BETA, "B": BETA, "C": BETA, "D": BETA}
 
 # Choose action based on epsilon-greedy strategy
-def choose_action():
+def choose_action_epsilon_greedy():
     if np.random.rand() < EPSILON:
-        return np.random.choice(["A", "B"])  # Explore
+        return np.random.choice(["A", "B", "C", "D"])  # Explore
     else:
-        return "A" if (st.session_state.rewards_A / max(1, st.session_state.visits_A)) > \
-                     (st.session_state.rewards_B / max(1, st.session_state.visits_B)) else "B"  # Exploit
+        return max(st.session_state.rewards, key=lambda k: st.session_state.rewards[k] / max(1, st.session_state.visits[k]))
+
+# Choose action based on Upper Confidence Bound (UCB)
+def choose_action_ucb():
+    total_visits = sum(st.session_state.visits.values()) + 1
+    ucb_values = {arm: (st.session_state.rewards[arm] / max(1, st.session_state.visits[arm])) + C * np.sqrt(np.log(total_visits) / max(1, st.session_state.visits[arm])) for arm in st.session_state.rewards}
+    return max(ucb_values, key=ucb_values.get)
+
+# Choose action based on Thompson Sampling
+def choose_action_thompson():
+    samples = {arm: np.random.beta(st.session_state.alpha[arm], st.session_state.beta[arm]) for arm in st.session_state.rewards}
+    return max(samples, key=samples.get)
 
 # User Click Simulation
 st.subheader("Click Simulation")
-col1, col2 = st.columns(2)
-
-with col1:
-    if st.button("Click Version A"):
-        st.session_state.visits_A += 1
-        if np.random.rand() < 0.5:  # Simulated reward probability for A
-            st.session_state.rewards_A += 1
-    st.write(f"Clicks: {st.session_state.rewards_A}")
-    st.write(f"Visitors: {st.session_state.visits_A}")
-
-with col2:
-    if st.button("Click Version B"):
-        st.session_state.visits_B += 1
-        if np.random.rand() < 0.6:  # Simulated reward probability for B
-            st.session_state.rewards_B += 1
-    st.write(f"Clicks: {st.session_state.rewards_B}")
-    st.write(f"Visitors: {st.session_state.visits_B}")
+cols = st.columns(4)
+for idx, arm in enumerate(["A", "B", "C", "D"]):
+    with cols[idx]:
+        if st.button(f"Click Version {arm}"):
+            st.session_state.visits[arm] += 1
+            if np.random.rand() < 0.5:  # Simulated reward probability
+                st.session_state.rewards[arm] += 1
+                st.session_state.alpha[arm] += 1  # Update for Thompson Sampling
+            else:
+                st.session_state.beta[arm] += 1  # Update for Thompson Sampling
+        st.write(f"Clicks: {st.session_state.rewards[arm]}")
+        st.write(f"Visitors: {st.session_state.visits[arm]}")
 
 # Compute estimated conversion rates
-rate_A = st.session_state.rewards_A / max(1, st.session_state.visits_A)
-rate_B = st.session_state.rewards_B / max(1, st.session_state.visits_B)
+conversion_rates = {arm: st.session_state.rewards[arm] / max(1, st.session_state.visits[arm]) for arm in st.session_state.rewards}
 
 # Display Results
 st.subheader("Results")
-st.write(f"**Estimated Conversion Rate for A:** {rate_A:.2%}")
-st.write(f"**Estimated Conversion Rate for B:** {rate_B:.2%}")
+for arm, rate in conversion_rates.items():
+    st.write(f"**Estimated Conversion Rate for {arm}:** {rate:.2%}")
+
+# Decision Making using MAB strategies
+epsilon_choice = choose_action_epsilon_greedy()
+ucb_choice = choose_action_ucb()
+thompson_choice = choose_action_thompson()
 
 # Interpretation
 st.subheader("Conclusion")
-if st.session_state.visits_A + st.session_state.visits_B < 30:
+if sum(st.session_state.visits.values()) < 30:
     st.info("📊 More data is needed to determine a clear winner. Keep testing!")
-elif rate_A > rate_B:
-    st.success("🚀 Version A appears to be better! ✅ Exploiting A more.")
-elif rate_B > rate_A:
-    st.success("🚀 Version B appears to be better! ✅ Exploiting B more.")
-else:
-    st.warning("No significant difference yet. Continue exploring.")
+st.success(f"🚀 **Epsilon-Greedy prefers:** {epsilon_choice}")
+st.success(f"🚀 **UCB prefers:** {ucb_choice}")
+st.success(f"🚀 **Thompson Sampling prefers:** {thompson_choice}")
 
 # Visualization
 fig, ax = plt.subplots()
-bars = ax.bar(["Version A", "Version B"], [rate_A, rate_B], color=['blue', 'red'])
+bars = ax.bar(["A", "B", "C", "D"], [conversion_rates["A"], conversion_rates["B"], conversion_rates["C"], conversion_rates["D"]], color=['blue', 'red', 'green', 'purple'])
 ax.bar_label(bars, fmt='%.2f%%')
 ax.set_ylabel("Estimated Conversion Rate")
 st.pyplot(fig)
