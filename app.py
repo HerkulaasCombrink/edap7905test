@@ -48,12 +48,11 @@ for idx, ad in enumerate(["Ad1", "Ad2", "Ad3", "Ad4"]):
     with cols[idx]:
         if st.button(f"Click Advert {idx+1}"):
             st.session_state.clicks[ad] += 1
-            if np.random.rand() < 0.5:  # Simulated reward probability
-                st.session_state.rewards[ad] += 1
-                st.session_state.alpha[ad] += 1  # Update for Thompson Sampling
-            else:
-                st.session_state.beta[ad] += 1  # Update for Thompson Sampling
-        st.write(f"Clicks: {st.session_state.rewards[ad]}")
+            st.session_state.rewards[ad] += np.random.choice([0, 1], p=[0.5, 0.5])
+            st.session_state.alpha[ad] += 1 if st.session_state.rewards[ad] > 0 else 0  # Update for Thompson Sampling
+            st.session_state.beta[ad] += 1 if st.session_state.rewards[ad] == 0 else 0  # Update for Thompson Sampling
+        st.write(f"Clicks: {st.session_state.clicks[ad]}")
+        st.write(f"Conversions: {st.session_state.rewards[ad]}")
         st.write(f"Total Visitors: {st.session_state.total_visitors}")
 
 # Compute estimated conversion rates
