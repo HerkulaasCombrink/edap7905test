@@ -2,6 +2,7 @@ matplotlib
 numpy
 streamlit
 networkx
+scipy
 #random
 #time
 #pygame
