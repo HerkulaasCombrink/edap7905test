@@ -1,74 +1,84 @@
 import streamlit as st
 import numpy as np
-import scipy.stats as stats
 import matplotlib.pyplot as plt
+import scipy.stats as stats
 
 # Title of the App
-st.title("A/B Testing Click Demo")
-st.write("Click to simulate user actions and compare two versions (A & B).")
+st.title("Multi-Armed Bandit: Epsilon-Greedy, Thompson Sampling, and UCB")
+st.write("Click to simulate user actions on different advertisements and let different algorithms dynamically learn which advert (1, 2, 3, or 4) is better.")
 
-# Initialize session state
-if "clicks_A" not in st.session_state:
-    st.session_state.clicks_A = 0
-    st.session_state.clicks_B = 0
-    st.session_state.visitors_A = 0
-    st.session_state.visitors_B = 0
+# Parameters
+EPSILON = 0.1  # Exploration rate for Epsilon-Greedy
+ALPHA, BETA = 1, 1  # Parameters for Thompson Sampling
+C = 2  # Exploration factor for UCB
+
+# Initialize session state for MAB
+if "rewards" not in st.session_state:
+    st.session_state.rewards = {"Ad1": 0, "Ad2": 0, "Ad3": 0, "Ad4": 0}
+    st.session_state.clicks = {"Ad1": 0, "Ad2": 0, "Ad3": 0, "Ad4": 0}
+    st.session_state.alpha = {"Ad1": ALPHA, "Ad2": ALPHA, "Ad3": ALPHA, "Ad4": ALPHA}
+    st.session_state.beta = {"Ad1": BETA, "Ad2": BETA, "Ad3": BETA, "Ad4": BETA}
+    st.session_state.total_visitors = 0  # Shared visitor pool
+
+# Simulate a visitor arriving
+st.session_state.total_visitors += 1
+
+# Choose action based on epsilon-greedy strategy
+def choose_action_epsilon_greedy():
+    if np.random.rand() < EPSILON:
+        return np.random.choice(["Ad1", "Ad2", "Ad3", "Ad4"])  # Explore
+    else:
+        return max(st.session_state.rewards, key=lambda k: st.session_state.rewards[k] / max(1, st.session_state.clicks[k]))
+
+# Choose action based on Upper Confidence Bound (UCB)
+def choose_action_ucb():
+    total_visits = st.session_state.total_visitors
+    ucb_values = {ad: (st.session_state.rewards[ad] / max(1, st.session_state.clicks[ad])) + C * np.sqrt(np.log(total_visits) / max(1, st.session_state.clicks[ad])) for ad in st.session_state.rewards}
+    return max(ucb_values, key=ucb_values.get)
+
+# Choose action based on Thompson Sampling
+def choose_action_thompson():
+    samples = {ad: np.random.beta(st.session_state.alpha[ad], st.session_state.beta[ad]) for ad in st.session_state.rewards}
+    return max(samples, key=samples.get)
 
 # User Click Simulation
-st.subheader("Click Simulation")
-col1, col2 = st.columns(2)
+st.subheader("Advert Click Simulation")
+cols = st.columns(4)
+for idx, ad in enumerate(["Ad1", "Ad2", "Ad3", "Ad4"]):
+    with cols[idx]:
+        if st.button(f"Click Advert {idx+1}"):
+            st.session_state.clicks[ad] += 1
+            st.session_state.rewards[ad] += np.random.choice([0, 1], p=[0.5, 0.5])
+            st.session_state.alpha[ad] += 1 if st.session_state.rewards[ad] > 0 else 0  # Update for Thompson Sampling
+            st.session_state.beta[ad] += 1 if st.session_state.rewards[ad] == 0 else 0  # Update for Thompson Sampling
+        st.write(f"Clicks: {st.session_state.clicks[ad]}")
+        st.write(f"Conversions: {st.session_state.rewards[ad]}")
+        st.write(f"Total Visitors: {st.session_state.total_visitors}")
 
-with col1:
-    if st.button("Click Version A"):
-        st.session_state.clicks_A += 1
-    st.session_state.visitors_A += 1
-    st.write(f"Clicks: {st.session_state.clicks_A}")
-    st.write(f"Visitors: {st.session_state.visitors_A}")
-
-with col2:
-    if st.button("Click Version B"):
-        st.session_state.clicks_B += 1
-    st.session_state.visitors_B += 1
-    st.write(f"Clicks: {st.session_state.clicks_B}")
-    st.write(f"Visitors: {st.session_state.visitors_B}")
-
-# Compute conversion rates
-rate_A = st.session_state.clicks_A / max(1, st.session_state.visitors_A)
-rate_B = st.session_state.clicks_B / max(1, st.session_state.visitors_B)
-
-def evaluate_ab_test(n_A, conv_A, n_B, conv_B):
-    # Perform a two-proportion z-test
-    p_A = conv_A / max(1, n_A)
-    p_B = conv_B / max(1, n_B)
-    p_pool = (conv_A + conv_B) / max(1, n_A + n_B)
-    se = np.sqrt(p_pool * (1 - p_pool) * (1/max(1, n_A) + 1/max(1, n_B)))
-    z_score = (p_B - p_A) / max(1e-6, se)
-    p_value = 1 - stats.norm.cdf(z_score)  # One-tailed test
-    return p_A, p_B, z_score, p_value
-
-# Perform A/B Test Analysis
-p_A, p_B, z_score, p_value = evaluate_ab_test(
-    st.session_state.visitors_A, st.session_state.clicks_A, 
-    st.session_state.visitors_B, st.session_state.clicks_B
-)
+# Compute estimated conversion rates
+conversion_rates = {ad: st.session_state.rewards[ad] / max(1, st.session_state.clicks[ad]) for ad in st.session_state.rewards}
 
 # Display Results
 st.subheader("Results")
-st.write(f"**Conversion Rate for A:** {p_A:.2%}")
-st.write(f"**Conversion Rate for B:** {p_B:.2%}")
-st.write(f"**Z-Score:** {z_score:.2f}")
-st.write(f"**P-Value:** {p_value:.4f}")
+for ad, rate in conversion_rates.items():
+    st.write(f"**Estimated Conversion Rate for {ad}:** {rate:.2%}")
+
+# Decision Making using MAB strategies
+epsilon_choice = choose_action_epsilon_greedy()
+ucb_choice = choose_action_ucb()
+thompson_choice = choose_action_thompson()
 
 # Interpretation
 st.subheader("Conclusion")
-if p_value < 0.05:
-    st.success("Version B performs significantly better than Version A! ✅")
-else:
-    st.warning("No significant difference between A and B. Keep testing!")
+if st.session_state.total_visitors < 30:
+    st.info("📊 More data is needed to determine a clear winner. Keep testing!")
+st.success(f"🚀 **Epsilon-Greedy prefers:** {epsilon_choice}")
+st.success(f"🚀 **UCB prefers:** {ucb_choice}")
+st.success(f"🚀 **Thompson Sampling prefers:** {thompson_choice}")
 
 # Visualization
 fig, ax = plt.subplots()
-bars = ax.bar(["Version A", "Version B"], [p_A, p_B], color=['blue', 'red'])
+bars = ax.bar(["Ad1", "Ad2", "Ad3", "Ad4"], [conversion_rates["Ad1"], conversion_rates["Ad2"], conversion_rates["Ad3"], conversion_rates["Ad4"]], color=['blue', 'red', 'green', 'purple'])
 ax.bar_label(bars, fmt='%.2f%%')
-ax.set_ylabel("Conversion Rate")
+ax.set_ylabel("Estimated Conversion Rate")
 st.pyplot(fig)
