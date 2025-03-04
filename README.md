@@ -2,7 +2,7 @@
 Research focussed on infodemiology across all domains innovated by Dr HMVE Combrink
 
 https://edap7905test-4krsk7zi8eocfpf3jbgkp5.streamlit.app/
-# Scale-Free Network Disease Spread Simulation
+# My test environment
 
 ## Overview
 This Python script implements a **Scale-Free Network Disease Spread Simulation** using **Streamlit** for interactivity and **NetworkX** for network modeling. The simulation models the spread of an infection across a network, tracking the number of infections, recoveries, and deaths over time.
