@@ -1,84 +1,146 @@
 import streamlit as st
-import numpy as np
 import matplotlib.pyplot as plt
-import scipy.stats as stats
+import numpy as np
+import random
+import time
+import networkx as nx
 
-# Title of the App
-st.title("Multi-Armed Bandit: Epsilon-Greedy, Thompson Sampling, and UCB")
-st.write("Click to simulate user actions on different advertisements and let different algorithms dynamically learn which advert (1, 2, 3, or 4) is better.")
+# Initialize simulation parameters
+def get_model_params():
+    return {
+        "N": st.sidebar.slider("Number of agents", 50, 500, 100),
+        "initial_infected": st.sidebar.slider("Initial Number of Infected", 1, 10, 3),
+        "infection_probability": st.sidebar.slider("Infection Probability", 0.0, 1.0, 0.5),
+        "steps": st.sidebar.slider("Experiment Duration (Seconds)", 5, 100, 50),  # Duration of the experiment
+    }
 
-# Parameters
-EPSILON = 0.1  # Exploration rate for Epsilon-Greedy
-ALPHA, BETA = 1, 1  # Parameters for Thompson Sampling
-C = 2  # Exploration factor for UCB
+# Simple Moving Average function for smoothing
+def moving_average(data, window_size=1):
+    if len(data) < window_size:
+        return data
+    return np.convolve(data, np.ones(window_size)/window_size, mode='valid')
 
-# Initialize session state for MAB
-if "rewards" not in st.session_state:
-    st.session_state.rewards = {"Ad1": 0, "Ad2": 0, "Ad3": 0, "Ad4": 0}
-    st.session_state.clicks = {"Ad1": 0, "Ad2": 0, "Ad3": 0, "Ad4": 0}
-    st.session_state.alpha = {"Ad1": ALPHA, "Ad2": ALPHA, "Ad3": ALPHA, "Ad4": ALPHA}
-    st.session_state.beta = {"Ad1": BETA, "Ad2": BETA, "Ad3": BETA, "Ad4": BETA}
-    st.session_state.total_visitors = 0  # Shared visitor pool
+# Agent class
+class Agent:
+    def __init__(self, unique_id, status, size):
+        self.unique_id = unique_id
+        self.status = status  # "infected", "susceptible", "alive", "dead"
+        self.size = size  # Determines susceptibility
+        self.infection_timer = 0  # Timer for conversion delay
+        self.recovery_timer = 0  # Timer for turning green after infection
 
-# Simulate a visitor arriving
-st.session_state.total_visitors += 1
+    def interact(self, neighbors, infection_probability):
+        if self.status == "infected":
+            for neighbor in neighbors:
+                if neighbor.status == "susceptible":
+                    susceptibility_factor = 1.0 / neighbor.size  # Smaller nodes are more susceptible
+                    if random.random() < (infection_probability * susceptibility_factor):
+                        neighbor.infection_timer = self.size  # Delay based on size
 
-# Choose action based on epsilon-greedy strategy
-def choose_action_epsilon_greedy():
-    if np.random.rand() < EPSILON:
-        return np.random.choice(["Ad1", "Ad2", "Ad3", "Ad4"])  # Explore
-    else:
-        return max(st.session_state.rewards, key=lambda k: st.session_state.rewards[k] / max(1, st.session_state.clicks[k]))
+    def update_status(self):
+        if self.status == "susceptible" and self.infection_timer > 0:
+            self.infection_timer -= 1
+            if self.infection_timer == 0:
+                self.status = "infected"
+                self.recovery_timer = 3  # Stay infected for 3 seconds before recovering
+        elif self.status == "infected" and self.recovery_timer > 0:
+            self.recovery_timer -= 1
+            if self.recovery_timer == 0:
+                self.status = "alive" if random.random() > 0.5 else "dead"  # 50% chance to turn blue (dead)
 
-# Choose action based on Upper Confidence Bound (UCB)
-def choose_action_ucb():
-    total_visits = st.session_state.total_visitors
-    ucb_values = {ad: (st.session_state.rewards[ad] / max(1, st.session_state.clicks[ad])) + C * np.sqrt(np.log(total_visits) / max(1, st.session_state.clicks[ad])) for ad in st.session_state.rewards}
-    return max(ucb_values, key=ucb_values.get)
+# Disease Spread Model
+class DiseaseSpreadModel:
+    def __init__(self, **params):
+        self.num_agents = params["N"]
+        self.infection_probability = params["infection_probability"]
+        self.G = nx.barabasi_albert_graph(self.num_agents, 3)
+        self.agents = {}
+        
+        all_nodes = list(self.G.nodes())
+        initial_infected = random.sample(all_nodes, params["initial_infected"])  # Select initial infected nodes
+        
+        for node in all_nodes:
+            size = random.choice([1, 2, 3, 4])  # 1 (most susceptible) to 4 (least susceptible)
+            status = "infected" if node in initial_infected else "susceptible"
+            self.agents[node] = Agent(node, status, size)
+        
+        self.node_positions = nx.spring_layout(self.G)  # Fix network shape
+        self.history = []
+        self.infection_counts = []
+        self.alive_counts = []
+        self.dead_counts = []
 
-# Choose action based on Thompson Sampling
-def choose_action_thompson():
-    samples = {ad: np.random.beta(st.session_state.alpha[ad], st.session_state.beta[ad]) for ad in st.session_state.rewards}
-    return max(samples, key=samples.get)
+    def step(self, step_num):
+        infections = 0
+        newly_alive = 0
+        newly_dead = 0
+        
+        for node, agent in self.agents.items():
+            neighbors = [self.agents[n] for n in self.G.neighbors(node)]
+            agent.interact(neighbors, self.infection_probability)
+        
+        for agent in self.agents.values():
+            prev_status = agent.status
+            agent.update_status()
+            if prev_status == "susceptible" and agent.status == "infected":
+                infections += 1
+            elif prev_status == "infected" and agent.status == "alive":
+                newly_alive += 1
+            elif prev_status == "infected" and agent.status == "dead":
+                newly_dead += 1
+        
+        self.infection_counts.append(infections)
+        self.alive_counts.append(newly_alive)
+        self.dead_counts.append(newly_dead)
+        self.history.append({node: agent.status for node, agent in self.agents.items()})
 
-# User Click Simulation
-st.subheader("Advert Click Simulation")
-cols = st.columns(4)
-for idx, ad in enumerate(["Ad1", "Ad2", "Ad3", "Ad4"]):
-    with cols[idx]:
-        if st.button(f"Click Advert {idx+1}"):
-            st.session_state.clicks[ad] += 1
-            st.session_state.rewards[ad] += np.random.choice([0, 1], p=[0.5, 0.5])
-            st.session_state.alpha[ad] += 1 if st.session_state.rewards[ad] > 0 else 0  # Update for Thompson Sampling
-            st.session_state.beta[ad] += 1 if st.session_state.rewards[ad] == 0 else 0  # Update for Thompson Sampling
-        st.write(f"Clicks: {st.session_state.clicks[ad]}")
-        st.write(f"Conversions: {st.session_state.rewards[ad]}")
-        st.write(f"Total Visitors: {st.session_state.total_visitors}")
+# Visualization function
+def plot_visuals(G, agents, positions, infections, alive_counts, dead_counts):
+    color_map = {"infected": "red", "susceptible": "gray", "alive": "green", "dead": "blue"}
+    node_colors = [color_map[agents[node].status] for node in G.nodes()]
+    node_sizes = [agents[node].size * 50 for node in G.nodes()]  # Adjust node size by susceptibility
+    
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    
+    # Network plot
+    nx.draw(G, pos=positions, ax=axes[0, 0], node_color=node_colors, with_labels=False, node_size=node_sizes, edge_color="gray")
+    axes[0, 0].set_title("Disease Spread Network")
+    
+    # Infection time series plot
+    axes[0, 1].plot(moving_average(infections), color="red", linewidth=1.5)
+    axes[0, 1].set_title("Infection Spread Over Time")
+    axes[0, 1].set_xlabel("Time (Seconds)")
+    axes[0, 1].set_ylabel("New Infections per Step")
+    
+    # Alive time series plot
+    axes[1, 0].plot(moving_average(alive_counts), color="green", linewidth=1.5)
+    axes[1, 0].set_title("New Alive Per Step")
+    axes[1, 0].set_xlabel("Time (Seconds)")
+    axes[1, 0].set_ylabel("Alive Count Per Step")
+    
+    # Dead time series plot
+    axes[1, 1].plot(moving_average(dead_counts), color="blue", linewidth=1.5)
+    axes[1, 1].set_title("New Dead Per Step")
+    axes[1, 1].set_xlabel("Time (Seconds")
+    axes[1, 1].set_ylabel("Dead Count Per Step")
+    
+    plt.tight_layout()
+    return fig
 
-# Compute estimated conversion rates
-conversion_rates = {ad: st.session_state.rewards[ad] / max(1, st.session_state.clicks[ad]) for ad in st.session_state.rewards}
+# Streamlit App
+st.title("Scale-Free Network Disease Spread Simulation")
+params = get_model_params()
 
-# Display Results
-st.subheader("Results")
-for ad, rate in conversion_rates.items():
-    st.write(f"**Estimated Conversion Rate for {ad}:** {rate:.2%}")
-
-# Decision Making using MAB strategies
-epsilon_choice = choose_action_epsilon_greedy()
-ucb_choice = choose_action_ucb()
-thompson_choice = choose_action_thompson()
-
-# Interpretation
-st.subheader("Conclusion")
-if st.session_state.total_visitors < 30:
-    st.info("📊 More data is needed to determine a clear winner. Keep testing!")
-st.success(f"🚀 **Epsilon-Greedy prefers:** {epsilon_choice}")
-st.success(f"🚀 **UCB prefers:** {ucb_choice}")
-st.success(f"🚀 **Thompson Sampling prefers:** {thompson_choice}")
-
-# Visualization
-fig, ax = plt.subplots()
-bars = ax.bar(["Ad1", "Ad2", "Ad3", "Ad4"], [conversion_rates["Ad1"], conversion_rates["Ad2"], conversion_rates["Ad3"], conversion_rates["Ad4"]], color=['blue', 'red', 'green', 'purple'])
-ax.bar_label(bars, fmt='%.2f%%')
-ax.set_ylabel("Estimated Conversion Rate")
-st.pyplot(fig)
+if st.button("Run Simulation"):
+    st.markdown("<script>window.scrollTo(0, document.body.scrollHeight);</script>", unsafe_allow_html=True)
+    model = DiseaseSpreadModel(**params)
+    progress_bar = st.progress(0)
+    visual_plot = st.empty()
+    
+    for step_num in range(1, params["steps"] + 1):
+        model.step(step_num)
+        progress_bar.progress(step_num / params["steps"])
+        fig = plot_visuals(model.G, model.agents, model.node_positions, model.infection_counts, model.alive_counts, model.dead_counts)
+        visual_plot.pyplot(fig)
+    
+    st.write("Simulation Complete.")
