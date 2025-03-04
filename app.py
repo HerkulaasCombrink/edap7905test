@@ -1,166 +1,53 @@
 import streamlit as st
-import matplotlib.pyplot as plt
 import numpy as np
-import random
-import time
-import networkx as nx
+import scipy.stats as stats
 
-# Initialize simulation parameters
-def get_model_params():
-    return {
-        "N": st.sidebar.slider("Number of agents", 100, 700, 150),
-        "initial_infected": st.sidebar.slider("Initial Number of Infected", 1, 10, 3),
-        "infection_probability": st.sidebar.slider("Infection Probability", 0.0, 1.0, 0.5),
-        "steps": st.sidebar.slider("Experiment Duration (Seconds)", 5, 100, 50),  # Duration of the experiment
-    }
+# Title of the App
+st.title("A/B Testing Demo")
+st.write("Compare two versions (A & B) and analyze the better performer.")
 
-# Simple Moving Average function for smoothing
-def moving_average(data, window_size=10):
-    if len(data) < window_size:
-        return data
-    return np.convolve(data, np.ones(window_size)/window_size, mode='valid')
+# User Inputs for conversion data
+st.sidebar.header("User Input: Conversions")
+n_A = st.sidebar.number_input("Visitors for A:", min_value=1, value=1000)
+conv_A = st.sidebar.number_input("Conversions for A:", min_value=0, max_value=n_A, value=50)
+n_B = st.sidebar.number_input("Visitors for B:", min_value=1, value=1000)
+conv_B = st.sidebar.number_input("Conversions for B:", min_value=0, max_value=n_B, value=70)
 
-# Agent class
-class Agent:
-    def __init__(self, unique_id, status, size):
-        self.unique_id = unique_id
-        self.status = status  # "infected", "susceptible", "alive", "dead"
-        self.size = size  # Determines susceptibility
-        self.infection_timer = 0  # Timer for conversion delay
-        self.recovery_timer = 0  # Timer for turning green after infection
+# Compute conversion rates
+rate_A = conv_A / n_A
+rate_B = conv_B / n_B
 
-    def interact(self, neighbors, infection_probability):
-        if self.status == "infected":
-            for neighbor in neighbors:
-                if neighbor.status == "susceptible":
-                    susceptibility_factor = 1.0 / neighbor.size  # Smaller nodes are more susceptible
-                    if random.random() < (infection_probability * susceptibility_factor):
-                        neighbor.infection_timer = self.size  # Delay based on size
+def evaluate_ab_test(n_A, conv_A, n_B, conv_B):
+    # Perform a two-proportion z-test
+    p_A = conv_A / n_A
+    p_B = conv_B / n_B
+    p_pool = (conv_A + conv_B) / (n_A + n_B)
+    se = np.sqrt(p_pool * (1 - p_pool) * (1/n_A + 1/n_B))
+    z_score = (p_B - p_A) / se
+    p_value = 1 - stats.norm.cdf(z_score)  # One-tailed test
+    return p_A, p_B, z_score, p_value
 
-    def update_status(self):
-        if self.status == "susceptible" and self.infection_timer > 0:
-            self.infection_timer -= 1
-            if self.infection_timer == 0:
-                self.status = "infected"
-                self.recovery_timer = 3  # Stay infected for 3 seconds before recovering
-        elif self.status == "infected" and self.recovery_timer > 0:
-            self.recovery_timer -= 1
-            if self.recovery_timer == 0:
-                self.status = "alive" if random.random() > 0.5 else "dead"  # 50% chance to turn blue (dead)
+# Perform A/B Test Analysis
+p_A, p_B, z_score, p_value = evaluate_ab_test(n_A, conv_A, n_B, conv_B)
 
-# Disease Spread Model
-class DiseaseSpreadModel:
-    def __init__(self, **params):
-        self.num_agents = params["N"]
-        self.infection_probability = params["infection_probability"]
-        self.G = nx.barabasi_albert_graph(self.num_agents, 3)
-        self.agents = {}
-        
-        all_nodes = list(self.G.nodes())
-        initial_infected = random.sample(all_nodes, params["initial_infected"])  # Select initial infected nodes
-        
-        for node in all_nodes:
-            size = random.choice([1, 2, 3, 4])  # 1 (most susceptible) to 4 (least susceptible)
-            status = "infected" if node in initial_infected else "susceptible"
-            self.agents[node] = Agent(node, status, size)
-        
-        self.node_positions = nx.spring_layout(self.G)  # Fix network shape
-        self.history = []
-        self.infection_counts = []
-        self.alive_counts = []
-        self.dead_counts = []
+# Display Results
+st.subheader("Results")
+st.write(f"**Conversion Rate for A:** {p_A:.2%}")
+st.write(f"**Conversion Rate for B:** {p_B:.2%}")
+st.write(f"**Z-Score:** {z_score:.2f}")
+st.write(f"**P-Value:** {p_value:.4f}")
 
-    def step(self, step_num):
-        infections = 0
-        newly_alive = 0
-        newly_dead = 0
-        
-        for node, agent in self.agents.items():
-            neighbors = [self.agents[n] for n in self.G.neighbors(node)]
-            agent.interact(neighbors, self.infection_probability)
-        
-        for agent in self.agents.values():
-            prev_status = agent.status
-            agent.update_status()
-            if prev_status == "susceptible" and agent.status == "infected":
-                infections += 1
-            elif prev_status == "infected" and agent.status == "alive":
-                newly_alive += 1
-            elif prev_status == "infected" and agent.status == "dead":
-                newly_dead += 1
-        
-        self.infection_counts.append(infections)
-        self.alive_counts.append(newly_alive)
-        self.dead_counts.append(newly_dead)
-        self.history.append({node: agent.status for node, agent in self.agents.items()})
+# Interpretation
+st.subheader("Conclusion")
+if p_value < 0.05:
+    st.success("Version B performs significantly better than Version A! ✅")
+else:
+    st.warning("No significant difference between A and B. More data may be needed.")
 
-# Visualization function
-def plot_visuals(G, agents, positions, infections, alive_counts, dead_counts):
-    color_map = {"infected": "red", "susceptible": "gray", "alive": "green", "dead": "blue"}
-    node_colors = [color_map[agents[node].status] for node in G.nodes()]
-    node_sizes = [agents[node].size * 50 for node in G.nodes()]  # Adjust node size by susceptibility
-    
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-    
-    # Network plot
-    nx.draw(G, pos=positions, ax=axes[0, 0], node_color=node_colors, with_labels=False, node_size=node_sizes, edge_color="gray")
-    axes[0, 0].set_title("Disease Spread Network")
-    
-    # Infection time series plot
-    axes[0, 1].plot(moving_average(infections), color="red", linewidth=1.5)
-    axes[0, 1].set_title("Infection Spread Over Time")
-    axes[0, 1].set_xlabel("Time (Seconds)")
-    axes[0, 1].set_ylabel("New Infections per Step")
-    
-    # Alive time series plot
-    axes[1, 0].plot(moving_average(alive_counts), color="green", linewidth=1.5)
-    axes[1, 0].set_title("New Alive Per Step")
-    axes[1, 0].set_xlabel("Time (Seconds)")
-    axes[1, 0].set_ylabel("Alive Count Per Step")
-    
-    # Dead time series plot
-    axes[1, 1].plot(moving_average(dead_counts), color="blue", linewidth=1.5)
-    axes[1, 1].set_title("New Dead Per Step")
-    axes[1, 1].set_xlabel("Time (Seconds")
-    axes[1, 1].set_ylabel("Dead Count Per Step")
-    
-    plt.tight_layout()
-    return fig
-
-# Streamlit App
-st.title("Scale-Free Network Disease Spread Simulation")
-params = get_model_params()
-
-if st.button("Run Simulation"):
-    st.markdown("<script>window.scrollTo(0, document.body.scrollHeight);</script>", unsafe_allow_html=True)
-    model = DiseaseSpreadModel(**params)
-    progress_bar = st.progress(0)
-    visual_plot = st.empty()
-    
-    for step_num in range(1, params["steps"] + 1):
-        model.step(step_num)
-        progress_bar.progress(step_num / params["steps"])
-        fig = plot_visuals(model.G, model.agents, model.node_positions, model.infection_counts, model.alive_counts, model.dead_counts)
-        visual_plot.pyplot(fig)
-    
-    st.write("Simulation Complete.")
-st.markdown(
-    """
-    **Employee Productivity and Performance Influence**
-
-    This simulation models disease spread in a **scale-free network** using an agent-based approach. 
-    Nodes represent individuals, where **red indicates infection, green represents recovery, and blue signifies death**. 
-    The spread follows **proximity-based transmission**, with larger nodes taking longer to infect smaller ones. 
-    After 3 time steps, an infected node **recovers (turns green) or dies (turns blue) with a 50% probability**. 
-    Users can adjust the number of agents, infection probability, and experiment duration.
-
-    **Visualizations:**
-    - A **real-time network graph** showing nodes changing color as infection progresses.
-    - **Three smoothed time series plots**:
-      - Infection spread over time (**Red**).
-      - Number of recoveries per step (**Green**).
-      - Number of deaths per step (**Blue**).
-
-    Adjust parameters and run the simulation to observe how disease spreads in a complex network.
-    """
-)
+# Visualization
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots()
+bars = ax.bar(["Version A", "Version B"], [p_A, p_B], color=['blue', 'red'])
+ax.bar_label(bars, fmt='%.2f%%')
+ax.set_ylabel("Conversion Rate")
+st.pyplot(fig)
