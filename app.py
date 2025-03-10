@@ -27,16 +27,26 @@ if st.button("Scrape Data"):
 
                 for i, table in enumerate(tables):
                     headers = [header.text.strip() for header in table.find_all("th")]
-                    rows = []
                     
-                    for row in table.find_all("tr")[1:]:  # Skip header row
-                        cells = row.find_all("td")
-                        row_data = [cell.text.strip() for cell in cells]
-                        if row_data:
-                            rows.append(row_data)
+                    # Extract all rows
+                    rows = []
+                    max_cols = len(headers)  # Default to header column count
+                    
+                    for row in table.find_all("tr"):
+                        cells = [cell.text.strip() for cell in row.find_all("td")]
+                        if len(cells) > max_cols: 
+                            max_cols = len(cells)  # Update max column count if a row has more columns
 
+                        if cells:
+                            rows.append(cells)
+
+                    # Ensure all rows have the same number of columns
+                    for row in rows:
+                        while len(row) < max_cols:
+                            row.append("")  # Pad missing columns with empty strings
+                    
                     # Create DataFrame
-                    df = pd.DataFrame(rows, columns=headers if headers else None)
+                    df = pd.DataFrame(rows, columns=headers if headers else [f"Column {i+1}" for i in range(max_cols)])
                     all_dfs.append(df)
 
                     # Display table
