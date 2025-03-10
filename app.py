@@ -40,9 +40,12 @@ for node in G.nodes():
     node_sizes[node] = {"Believer": 100, "Skeptic": 100, "Neutral": 80, "Influencer": 300}[belief]
 
 # Initialize tracking metrics
-belief_counts = {"Believers": [], "Skeptics": [], "Neutrals": [], "Influencers": []}
-for key in belief_counts.keys():
-    belief_counts[key].append(len(agent_types[key]))
+belief_counts = {"Believers": [len(agent_types["Believer"])],
+                 "Skeptics": [len(agent_types["Skeptic"])],
+                 "Neutrals": [len(agent_types["Neutral"])],
+                 "Influencers": [len(agent_types["Influencer"])],
+                 "Rewards_Skeptic": [0],
+                 "Rewards_Believer": [0]}
 
 # Streamlit visualization setup
 st.sidebar.write("Click the button below to start the simulation.")
