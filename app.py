@@ -51,6 +51,8 @@ st.sidebar.write("Click the button below to start the simulation.")
 if st.sidebar.button("Start Simulation"):
     progress_bar = st.progress(0)
     status_text = st.empty()
+    network_plot = st.empty()
+    graph_plot = st.empty()
     
     for t in range(steps):
         reward_skeptic = rewards["Skeptic"][-1]
@@ -98,8 +100,11 @@ if st.sidebar.button("Start Simulation"):
         progress_bar.progress((t + 1) / steps)
         status_text.text(f"Simulation Step {t + 1}/{steps}")
         
-        time.sleep(0.05)
-    
+        if t % 10 == 0:
+            fig, ax = plt.subplots(figsize=(12, 10))
+            nx.draw(G, pos=nx.spring_layout(G), node_color=[node_colors[n] for n in G.nodes()], node_size=[node_sizes[n] for n in G.nodes()], edge_color="lightgray", with_labels=False)
+            network_plot.pyplot(fig)
+        
     st.success("Simulation Complete")
     
     # Display final network state
