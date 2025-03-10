@@ -17,6 +17,10 @@ fact_check_prob = st.sidebar.slider("Fact-Checking Probability", min_value=0.0, 
 epsilon = st.sidebar.slider("Epsilon (E-Greedy Believers)", min_value=0.0, max_value=1.0, value=0.1, step=0.05)
 steps = st.sidebar.slider("Simulation Steps", min_value=50, max_value=500, value=200, step=10)
 
+# Algorithm selection
+believer_algorithm = st.sidebar.selectbox("Believer Strategy", ["E-Greedy", "Thompson Sampling", "Random"])
+skeptic_algorithm = st.sidebar.selectbox("Skeptic Strategy", ["UCB", "Thompson Sampling", "Random"])
+
 # Create a Scale-Free Network
 G = nx.barabasi_albert_graph(N, 3)
 network_pos = nx.spring_layout(G)  # Fixed layout for consistent visualization
@@ -25,16 +29,16 @@ network_pos = nx.spring_layout(G)  # Fixed layout for consistent visualization
 belief_states = ["Believer", "Skeptic", "Neutral", "Influencer"]
 node_colors = {}
 node_sizes = {}
-skep_strategies = {}  # Store UCB skeptics
+skep_strategies = {}  # Store selected skeptic strategy
 agent_types = {"Believer": set(), "Skeptic": set(), "Neutral": set(), "Influencer": set()}
 rewards = {"Skeptic": [0], "Believer": [0]}  # Track cumulative rewards over time
 
 for node in G.nodes():
     belief = random.choices(belief_states, weights=[0.4, 0.3, 0.2, 0.1])[0]
     if belief == "Skeptic":
-        skep_strategies[node] = "UCB"  # All skeptics use UCB
+        skep_strategies[node] = skeptic_algorithm  # Assign selected skeptic algorithm
     elif belief == "Believer":
-        skep_strategies[node] = "E-Greedy"  # All believers use E-Greedy
+        skep_strategies[node] = believer_algorithm  # Assign selected believer algorithm
     agent_types[belief].add(node)
     node_colors[node] = {"Believer": "red", "Skeptic": "blue", "Neutral": "gray", "Influencer": "green"}[belief]
     node_sizes[node] = {"Believer": 100, "Skeptic": 100, "Neutral": 80, "Influencer": 300}[belief]
@@ -65,8 +69,8 @@ if st.sidebar.button("Start Simulation"):
                 continue
             target = random.choice(neighbors)
             
-            if node in agent_types["Believer"]:  # E-Greedy believers spreading misinformation
-                if random.random() < epsilon:
+            if node in agent_types["Believer"]:  # Believers applying selected strategy
+                if believer_algorithm == "E-Greedy" and random.random() < epsilon:
                     target = random.choice(neighbors)  # Explore new target
                 if random.random() < misinformation_spread_prob and target in agent_types["Neutral"]:
                     agent_types["Believer"].add(target)
@@ -78,8 +82,8 @@ if st.sidebar.button("Start Simulation"):
                     node_colors[target] = "red"
                     reward_believer += 2
             
-            elif node in agent_types["Skeptic"]:  # UCB skeptics counter misinformation
-                if node in skep_strategies and skep_strategies[node] == "UCB":
+            elif node in agent_types["Skeptic"]:  # Skeptics applying selected strategy
+                if skep_strategies[node] == "UCB":
                     if random.random() < fact_check_prob and target in agent_types["Believer"]:
                         agent_types["Skeptic"].add(target)
                         agent_types["Believer"].remove(target)
@@ -107,8 +111,8 @@ if st.sidebar.button("Start Simulation"):
             network_plot.pyplot(fig)
             
             fig, axs = plt.subplots(1, 2, figsize=(18, 6))
-            axs[0].plot(range(len(belief_counts["Believers"])), belief_counts["Believers"], label="Believers (E-Greedy)", color="red")
-            axs[0].plot(range(len(belief_counts["Skeptics"])), belief_counts["Skeptics"], label="Skeptics (UCB)", color="blue")
+            axs[0].plot(range(len(belief_counts["Believers"])), belief_counts["Believers"], label="Believers", color="red")
+            axs[0].plot(range(len(belief_counts["Skeptics"])), belief_counts["Skeptics"], label="Skeptics", color="blue")
             axs[0].set_title("Believers vs. Skeptics Over Time")
             axs[0].legend()
             
