@@ -107,5 +107,22 @@ if st.sidebar.button("Start Simulation"):
         
         progress_bar.progress((t + 1) / steps)
         status_text.text(f"Simulation Step {t + 1}/{steps}")
+        
+        if t % 10 == 0:
+            fig, ax = plt.subplots(figsize=(12, 10))
+            nx.draw(G, pos=network_pos, node_color=[node_colors[n] for n in G.nodes()], node_size=[node_sizes[n] for n in G.nodes()], edge_color="lightgray", with_labels=False)
+            network_plot.pyplot(fig)
+            
+            fig, axs = plt.subplots(1, 3, figsize=(18, 6))
+            axs[0].plot(range(len(belief_counts["Believers"])), belief_counts["Believers"], label="Believers", color="red")
+            axs[0].plot(range(len(belief_counts["Skeptics"])), belief_counts["Skeptics"], label="Skeptics", color="blue")
+            axs[0].set_title("Believers vs. Skeptics Over Time")
+            axs[0].legend()
+            
+            axs[1].plot(range(len(belief_counts["Neutrals"])), belief_counts["Neutrals"], label="Neutrals", color="gray")
+            axs[1].set_title("Neutral Count Over Time")
+            axs[1].legend()
+            
+            graph_plot.pyplot(fig)
     
     st.success("Simulation Complete")
