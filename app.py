@@ -1,146 +1,121 @@
 import streamlit as st
+import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import random
 import time
-import networkx as nx
 
-# Initialize simulation parameters
-def get_model_params():
-    return {
-        "N": st.sidebar.slider("Number of agents", 50, 500, 100),
-        "initial_infected": st.sidebar.slider("Initial Number of Infected", 1, 10, 3),
-        "infection_probability": st.sidebar.slider("Infection Probability", 0.0, 1.0, 0.5),
-        "steps": st.sidebar.slider("Experiment Duration (Seconds)", 5, 100, 50),  # Duration of the experiment
-    }
+# Streamlit UI setup
+st.title("Misinformation Dynamic Network Simulation")
+st.sidebar.header("Simulation Parameters")
 
-# Simple Moving Average function for smoothing
-def moving_average(data, window_size=1):
-    if len(data) < window_size:
-        return data
-    return np.convolve(data, np.ones(window_size)/window_size, mode='valid')
+# Customizable parameters
+N = st.sidebar.slider("Number of Agents", min_value=50, max_value=500, value=100, step=10)
+misinformation_spread_prob = st.sidebar.slider("Misinformation Spread Probability", min_value=0.0, max_value=1.0, value=0.3, step=0.05)
+fact_check_prob = st.sidebar.slider("Fact-Checking Probability", min_value=0.0, max_value=1.0, value=0.1, step=0.05)
+epsilon = st.sidebar.slider("Epsilon (E-Greedy Believers)", min_value=0.0, max_value=1.0, value=0.1, step=0.05)
+steps = st.sidebar.slider("Simulation Steps", min_value=50, max_value=500, value=200, step=10)
 
-# Agent class
-class Agent:
-    def __init__(self, unique_id, status, size):
-        self.unique_id = unique_id
-        self.status = status  # "infected", "susceptible", "alive", "dead"
-        self.size = size  # Determines susceptibility
-        self.infection_timer = 0  # Timer for conversion delay
-        self.recovery_timer = 0  # Timer for turning green after infection
+# Create a Scale-Free Network
+G = nx.barabasi_albert_graph(N, 3)
 
-    def interact(self, neighbors, infection_probability):
-        if self.status == "infected":
-            for neighbor in neighbors:
-                if neighbor.status == "susceptible":
-                    susceptibility_factor = 1.0 / neighbor.size  # Smaller nodes are more susceptible
-                    if random.random() < (infection_probability * susceptibility_factor):
-                        neighbor.infection_timer = self.size  # Delay based on size
+# Assign belief states to nodes
+belief_states = ["Believer", "Skeptic", "Neutral", "Influencer"]
+node_colors = {}
+node_sizes = {}
+skep_strategies = {}  # Store UCB skeptics
+agent_types = {"Believer": set(), "Skeptic": set(), "Neutral": set(), "Influencer": set()}
+rewards = {"Skeptic": [0], "Believer": [0]}  # Track cumulative rewards over time
 
-    def update_status(self):
-        if self.status == "susceptible" and self.infection_timer > 0:
-            self.infection_timer -= 1
-            if self.infection_timer == 0:
-                self.status = "infected"
-                self.recovery_timer = 3  # Stay infected for 3 seconds before recovering
-        elif self.status == "infected" and self.recovery_timer > 0:
-            self.recovery_timer -= 1
-            if self.recovery_timer == 0:
-                self.status = "alive" if random.random() > 0.5 else "dead"  # 50% chance to turn blue (dead)
+for node in G.nodes():
+    belief = random.choices(belief_states, weights=[0.4, 0.3, 0.2, 0.1])[0]
+    if belief == "Skeptic":
+        skep_strategies[node] = "UCB"  # All skeptics use UCB
+    elif belief == "Believer":
+        skep_strategies[node] = "E-Greedy"  # All believers use E-Greedy
+    agent_types[belief].add(node)
+    node_colors[node] = {"Believer": "red", "Skeptic": "blue", "Neutral": "gray", "Influencer": "green"}[belief]
+    node_sizes[node] = {"Believer": 100, "Skeptic": 100, "Neutral": 80, "Influencer": 300}[belief]
 
-# Disease Spread Model
-class DiseaseSpreadModel:
-    def __init__(self, **params):
-        self.num_agents = params["N"]
-        self.infection_probability = params["infection_probability"]
-        self.G = nx.barabasi_albert_graph(self.num_agents, 3)
-        self.agents = {}
-        
-        all_nodes = list(self.G.nodes())
-        initial_infected = random.sample(all_nodes, params["initial_infected"])  # Select initial infected nodes
-        
-        for node in all_nodes:
-            size = random.choice([1, 2, 3, 4])  # 1 (most susceptible) to 4 (least susceptible)
-            status = "infected" if node in initial_infected else "susceptible"
-            self.agents[node] = Agent(node, status, size)
-        
-        self.node_positions = nx.spring_layout(self.G)  # Fix network shape
-        self.history = []
-        self.infection_counts = []
-        self.alive_counts = []
-        self.dead_counts = []
+# Initialize tracking metrics
+belief_counts = {"Believers": [len(agent_types["Believer"])],
+                 "Skeptics": [len(agent_types["Skeptic"])],
+                 "Neutrals": [len(agent_types["Neutral"])],
+                 "Influencers": [len(agent_types["Influencer"])],
+                 "Rewards_Skeptic": [],
+                 "Rewards_Believer": []}
 
-    def step(self, step_num):
-        infections = 0
-        newly_alive = 0
-        newly_dead = 0
-        
-        for node, agent in self.agents.items():
-            neighbors = [self.agents[n] for n in self.G.neighbors(node)]
-            agent.interact(neighbors, self.infection_probability)
-        
-        for agent in self.agents.values():
-            prev_status = agent.status
-            agent.update_status()
-            if prev_status == "susceptible" and agent.status == "infected":
-                infections += 1
-            elif prev_status == "infected" and agent.status == "alive":
-                newly_alive += 1
-            elif prev_status == "infected" and agent.status == "dead":
-                newly_dead += 1
-        
-        self.infection_counts.append(infections)
-        self.alive_counts.append(newly_alive)
-        self.dead_counts.append(newly_dead)
-        self.history.append({node: agent.status for node, agent in self.agents.items()})
-
-# Visualization function
-def plot_visuals(G, agents, positions, infections, alive_counts, dead_counts):
-    color_map = {"infected": "red", "susceptible": "gray", "alive": "green", "dead": "blue"}
-    node_colors = [color_map[agents[node].status] for node in G.nodes()]
-    node_sizes = [agents[node].size * 50 for node in G.nodes()]  # Adjust node size by susceptibility
-    
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-    
-    # Network plot
-    nx.draw(G, pos=positions, ax=axes[0, 0], node_color=node_colors, with_labels=False, node_size=node_sizes, edge_color="gray")
-    axes[0, 0].set_title("Disease Spread Network")
-    
-    # Infection time series plot
-    axes[0, 1].plot(moving_average(infections), color="red", linewidth=1.5)
-    axes[0, 1].set_title("Infection Spread Over Time")
-    axes[0, 1].set_xlabel("Time (Seconds)")
-    axes[0, 1].set_ylabel("New Infections per Step")
-    
-    # Alive time series plot
-    axes[1, 0].plot(moving_average(alive_counts), color="green", linewidth=1.5)
-    axes[1, 0].set_title("New Alive Per Step")
-    axes[1, 0].set_xlabel("Time (Seconds)")
-    axes[1, 0].set_ylabel("Alive Count Per Step")
-    
-    # Dead time series plot
-    axes[1, 1].plot(moving_average(dead_counts), color="blue", linewidth=1.5)
-    axes[1, 1].set_title("New Dead Per Step")
-    axes[1, 1].set_xlabel("Time (Seconds")
-    axes[1, 1].set_ylabel("Dead Count Per Step")
-    
-    plt.tight_layout()
-    return fig
-
-# Streamlit App
-st.title("Scale-Free Network Disease Spread Simulation")
-params = get_model_params()
-
-if st.button("Run Simulation"):
-    st.markdown("<script>window.scrollTo(0, document.body.scrollHeight);</script>", unsafe_allow_html=True)
-    model = DiseaseSpreadModel(**params)
+# Streamlit visualization setup
+st.sidebar.write("Click the button below to start the simulation.")
+if st.sidebar.button("Start Simulation"):
     progress_bar = st.progress(0)
-    visual_plot = st.empty()
+    status_text = st.empty()
     
-    for step_num in range(1, params["steps"] + 1):
-        model.step(step_num)
-        progress_bar.progress(step_num / params["steps"])
-        fig = plot_visuals(model.G, model.agents, model.node_positions, model.infection_counts, model.alive_counts, model.dead_counts)
-        visual_plot.pyplot(fig)
+    for t in range(steps):
+        reward_skeptic = rewards["Skeptic"][-1]
+        reward_believer = rewards["Believer"][-1]
+        
+        for node in list(G.nodes()):
+            neighbors = list(G.neighbors(node))
+            if not neighbors:
+                continue
+            target = random.choice(neighbors)
+            
+            if node in agent_types["Believer"]:  # E-Greedy believers spreading misinformation
+                if random.random() < epsilon:
+                    target = random.choice(neighbors)  # Explore new target
+                if random.random() < misinformation_spread_prob and target in agent_types["Neutral"]:
+                    agent_types["Believer"].add(target)
+                    agent_types["Neutral"].remove(target)
+                    node_colors[target] = "red"
+                    reward_believer += 1
+                elif target in agent_types["Influencer"]:
+                    agent_types["Believer"].add(target)
+                    node_colors[target] = "red"
+                    reward_believer += 2
+            
+            elif node in agent_types["Skeptic"]:  # UCB skeptics counter misinformation
+                if node in skep_strategies and skep_strategies[node] == "UCB":
+                    if random.random() < fact_check_prob and target in agent_types["Believer"]:
+                        agent_types["Skeptic"].add(target)
+                        agent_types["Believer"].remove(target)
+                        node_colors[target] = "blue"
+                        reward_skeptic += 1
+                    elif target in agent_types["Influencer"] and node_colors[target] == "red":
+                        agent_types["Skeptic"].add(target)
+                        node_colors[target] = "blue"
+                        reward_skeptic += 2
+        
+        rewards["Believer"].append(reward_believer)
+        rewards["Skeptic"].append(reward_skeptic)
+        
+        belief_counts["Believers"].append(len(agent_types["Believer"]))
+        belief_counts["Skeptics"].append(len(agent_types["Skeptic"]))
+        belief_counts["Neutrals"].append(len(agent_types["Neutral"]))
+        belief_counts["Influencers"].append(len(agent_types["Influencer"]))
+        
+        progress_bar.progress((t + 1) / steps)
+        status_text.text(f"Simulation Step {t + 1}/{steps}")
+        
+        time.sleep(0.05)
     
-    st.write("Simulation Complete.")
+    st.success("Simulation Complete")
+    
+    # Display final network state
+    fig, ax = plt.subplots(figsize=(12, 10))
+    nx.draw(G, pos=nx.spring_layout(G), node_color=[node_colors[n] for n in G.nodes()], node_size=[node_sizes[n] for n in G.nodes()], edge_color="lightgray", with_labels=False)
+    st.pyplot(fig)
+    
+    # Display time-series plots
+    fig, axs = plt.subplots(1, 2, figsize=(18, 6))
+    axs[0].plot(range(steps + 1), belief_counts["Believers"], label="Believers (E-Greedy)", color="red")
+    axs[0].plot(range(steps + 1), belief_counts["Skeptics"], label="Skeptics (UCB)", color="blue")
+    axs[0].set_title("Believers vs. Skeptics Over Time")
+    axs[0].legend()
+    
+    axs[1].plot(range(steps + 1), belief_counts["Neutrals"], label="Neutrals", color="gray")
+    axs[1].set_title("Neutral Count Over Time")
+    axs[1].legend()
+    
+    st.pyplot(fig)
