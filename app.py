@@ -40,12 +40,9 @@ for node in G.nodes():
     node_sizes[node] = {"Believer": 100, "Skeptic": 100, "Neutral": 80, "Influencer": 300}[belief]
 
 # Initialize tracking metrics
-belief_counts = {"Believers": [len(agent_types["Believer"])],
-                 "Skeptics": [len(agent_types["Skeptic"])],
-                 "Neutrals": [len(agent_types["Neutral"])],
-                 "Influencers": [len(agent_types["Influencer"])],
-                 "Rewards_Skeptic": [],
-                 "Rewards_Believer": []}
+belief_counts = {"Believers": [], "Skeptics": [], "Neutrals": [], "Influencers": []}
+for key in belief_counts.keys():
+    belief_counts[key].append(len(agent_types[key]))
 
 # Streamlit visualization setup
 st.sidebar.write("Click the button below to start the simulation.")
@@ -107,12 +104,12 @@ if st.sidebar.button("Start Simulation"):
             network_plot.pyplot(fig)
             
             fig, axs = plt.subplots(1, 2, figsize=(18, 6))
-            axs[0].plot(range(t + 1), belief_counts["Believers"], label="Believers (E-Greedy)", color="red")
-            axs[0].plot(range(t + 1), belief_counts["Skeptics"], label="Skeptics (UCB)", color="blue")
+            axs[0].plot(range(len(belief_counts["Believers"])), belief_counts["Believers"], label="Believers (E-Greedy)", color="red")
+            axs[0].plot(range(len(belief_counts["Skeptics"])), belief_counts["Skeptics"], label="Skeptics (UCB)", color="blue")
             axs[0].set_title("Believers vs. Skeptics Over Time")
             axs[0].legend()
             
-            axs[1].plot(range(t + 1), belief_counts["Neutrals"], label="Neutrals", color="gray")
+            axs[1].plot(range(len(belief_counts["Neutrals"])), belief_counts["Neutrals"], label="Neutrals", color="gray")
             axs[1].set_title("Neutral Count Over Time")
             axs[1].legend()
             
