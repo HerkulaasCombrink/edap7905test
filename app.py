@@ -14,6 +14,7 @@ st.sidebar.header("Simulation Parameters")
 N = st.sidebar.slider("Number of Agents", min_value=50, max_value=500, value=100, step=10)
 misinformation_spread_prob = st.sidebar.slider("Misinformation Spread Probability", min_value=0.0, max_value=1.0, value=0.3, step=0.05)
 fact_check_prob = st.sidebar.slider("Fact-Checking Probability", min_value=0.0, max_value=1.0, value=0.1, step=0.05)
+skeptic_conversion_prob = st.sidebar.slider("Skeptic Conversion Probability", min_value=0.0, max_value=1.0, value=0.05, step=0.01)  # New parameter
 epsilon = st.sidebar.slider("Epsilon (E-Greedy Believers)", min_value=0.0, max_value=1.0, value=0.1, step=0.05)
 steps = st.sidebar.slider("Simulation Steps", min_value=50, max_value=500, value=200, step=10)
 
@@ -104,6 +105,12 @@ if st.sidebar.button("Start Simulation"):
                         agent_types["Believer"].remove(target)
                         node_colors[target] = "blue"
                         reward_skeptic += 1
+                
+                # Skeptic conversion back to Neutral
+                if random.random() < skeptic_conversion_prob:
+                    agent_types["Skeptic"].remove(node)
+                    agent_types["Neutral"].add(node)
+                    node_colors[node] = "gray"
         
         rewards["Believer"].append(reward_believer)
         rewards["Skeptic"].append(reward_skeptic)
