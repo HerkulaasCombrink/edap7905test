@@ -30,23 +30,35 @@ if st.button("Scrape Data"):
                     
                     # Extract all rows
                     rows = []
-                    max_cols = len(headers)  # Default to header column count
+                    max_cols = len(headers) if headers else 0  # Default to header column count
                     
                     for row in table.find_all("tr"):
                         cells = [cell.text.strip() for cell in row.find_all("td")]
-                        if len(cells) > max_cols: 
-                            max_cols = len(cells)  # Update max column count if a row has more columns
-
+                        max_cols = max(max_cols, len(cells))  # Ensure column count is consistent
                         if cells:
                             rows.append(cells)
 
                     # Ensure all rows have the same number of columns
                     for row in rows:
                         while len(row) < max_cols:
-                            row.append("")  # Pad missing columns with empty strings
-                    
-                    # Create DataFrame
-                    df = pd.DataFrame(rows, columns=headers if headers else [f"Column {i+1}" for i in range(max_cols)])
+                            row.append("")  # Pad missing columns with empty values
+
+                    # Handle duplicate column names
+                    if headers:
+                        unique_headers = []
+                        seen = {}
+                        for col in headers:
+                            if col in seen:
+                                seen[col] += 1
+                                unique_headers.append(f"{col}_{seen[col]}")
+                            else:
+                                seen[col] = 0
+                                unique_headers.append(col)
+                    else:
+                        unique_headers = [f"Column {i+1}" for i in range(max_cols)]
+
+                    # Create DataFrame with unique column names
+                    df = pd.DataFrame(rows, columns=unique_headers)
                     all_dfs.append(df)
 
                     # Display table
