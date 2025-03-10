@@ -19,6 +19,7 @@ steps = st.sidebar.slider("Simulation Steps", min_value=50, max_value=500, value
 
 # Create a Scale-Free Network
 G = nx.barabasi_albert_graph(N, 3)
+network_pos = nx.spring_layout(G)  # Fixed layout for consistent visualization
 
 # Assign belief states to nodes
 belief_states = ["Believer", "Skeptic", "Neutral", "Influencer"]
@@ -102,25 +103,19 @@ if st.sidebar.button("Start Simulation"):
         
         if t % 10 == 0:
             fig, ax = plt.subplots(figsize=(12, 10))
-            nx.draw(G, pos=nx.spring_layout(G), node_color=[node_colors[n] for n in G.nodes()], node_size=[node_sizes[n] for n in G.nodes()], edge_color="lightgray", with_labels=False)
+            nx.draw(G, pos=network_pos, node_color=[node_colors[n] for n in G.nodes()], node_size=[node_sizes[n] for n in G.nodes()], edge_color="lightgray", with_labels=False)
             network_plot.pyplot(fig)
-        
+            
+            fig, axs = plt.subplots(1, 2, figsize=(18, 6))
+            axs[0].plot(range(t + 1), belief_counts["Believers"], label="Believers (E-Greedy)", color="red")
+            axs[0].plot(range(t + 1), belief_counts["Skeptics"], label="Skeptics (UCB)", color="blue")
+            axs[0].set_title("Believers vs. Skeptics Over Time")
+            axs[0].legend()
+            
+            axs[1].plot(range(t + 1), belief_counts["Neutrals"], label="Neutrals", color="gray")
+            axs[1].set_title("Neutral Count Over Time")
+            axs[1].legend()
+            
+            graph_plot.pyplot(fig)
+    
     st.success("Simulation Complete")
-    
-    # Display final network state
-    fig, ax = plt.subplots(figsize=(12, 10))
-    nx.draw(G, pos=nx.spring_layout(G), node_color=[node_colors[n] for n in G.nodes()], node_size=[node_sizes[n] for n in G.nodes()], edge_color="lightgray", with_labels=False)
-    st.pyplot(fig)
-    
-    # Display time-series plots
-    fig, axs = plt.subplots(1, 2, figsize=(18, 6))
-    axs[0].plot(range(steps + 1), belief_counts["Believers"], label="Believers (E-Greedy)", color="red")
-    axs[0].plot(range(steps + 1), belief_counts["Skeptics"], label="Skeptics (UCB)", color="blue")
-    axs[0].set_title("Believers vs. Skeptics Over Time")
-    axs[0].legend()
-    
-    axs[1].plot(range(steps + 1), belief_counts["Neutrals"], label="Neutrals", color="gray")
-    axs[1].set_title("Neutral Count Over Time")
-    axs[1].legend()
-    
-    st.pyplot(fig)
