@@ -24,21 +24,31 @@ if st.button("Scrape Data"):
                 st.warning("No tables found on this webpage. Try another URL.")
             else:
                 all_dfs = []
-                
+
                 for i, table in enumerate(tables):
-                    df = pd.read_html(str(table))[0]  # Convert HTML table to DataFrame
-                    all_dfs.append(df)
+                    headers = [header.text.strip() for header in table.find_all("th")]
+                    rows = []
                     
-                    # Display the table
+                    for row in table.find_all("tr")[1:]:  # Skip header row
+                        cells = row.find_all("td")
+                        row_data = [cell.text.strip() for cell in cells]
+                        if row_data:
+                            rows.append(row_data)
+
+                    # Create DataFrame
+                    df = pd.DataFrame(rows, columns=headers if headers else None)
+                    all_dfs.append(df)
+
+                    # Display table
                     st.write(f"Table {i+1}")
                     st.dataframe(df)
                 
-                # Combine all tables into one CSV (if multiple tables exist)
+                # Combine all tables into one CSV
                 csv_buffer = BytesIO()
                 combined_df = pd.concat(all_dfs, ignore_index=True)
                 combined_df.to_csv(csv_buffer, index=False)
                 csv_buffer.seek(0)
-                
+
                 st.download_button(
                     label="Download Data as CSV",
                     data=csv_buffer,
