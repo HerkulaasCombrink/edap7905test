@@ -83,7 +83,7 @@ if st.sidebar.button("Start Simulation"):
                     reward_believer += 2
             
             elif node in agent_types["Skeptic"]:  # Skeptics applying selected strategy
-                if skep_strategies[node] == "UCB":
+                if node in skep_strategies and skep_strategies.get(node, "UCB") == "UCB":  # Default to UCB if not assigned
                     if random.random() < fact_check_prob and target in agent_types["Believer"]:
                         agent_types["Skeptic"].add(target)
                         agent_types["Believer"].remove(target)
