@@ -1,59 +1,61 @@
 import streamlit as st
-import json
+import yfinance as yf
+import matplotlib.pyplot as plt
 import pandas as pd
 from io import BytesIO
 
-st.title("HAR File Parser and CSV Exporter")
+# Dictionary of stock symbols
+STOCKS = {
+    "Alphabet (GOOGL)": "GOOGL",
+    "Nvidia (NVDA)": "NVDA",
+    "Microsoft (MSFT)": "MSFT"
+}
 
-# File uploader
-uploaded_file = st.file_uploader("Upload a HAR file", type=["har"])
+# Streamlit UI
+st.title("Stock Time Series Visualization")
 
-if uploaded_file is not None:
-    try:
-        # Load HAR file
-        har_data = json.load(uploaded_file)
-        
-        # Extract network requests
-        entries = har_data.get("log", {}).get("entries", [])
+# Select a stock
+selected_stock = st.selectbox("Choose a stock:", list(STOCKS.keys()))
 
-        if not entries:
-            st.warning("No network request entries found in the HAR file.")
+# Select date range
+start_date = st.date_input("Start Date")
+end_date = st.date_input("End Date")
+
+# Fetch data button
+if st.button("Fetch Data"):
+    if start_date and end_date:
+        stock_symbol = STOCKS[selected_stock]
+
+        # Download stock data
+        df = yf.download(stock_symbol, start=start_date, end=end_date)
+
+        if df.empty:
+            st.warning("No data available for the selected date range. Try another period.")
         else:
-            # Extract relevant data
-            extracted_data = []
-            for entry in entries:
-                request = entry.get("request", {})
-                response = entry.get("response", {})
-                timings = entry.get("timings", {})
-
-                extracted_data.append({
-                    "URL": request.get("url", "N/A"),
-                    "Method": request.get("method", "N/A"),
-                    "Status Code": response.get("status", "N/A"),
-                    "Status Text": response.get("statusText", "N/A"),
-                    "Request Headers": json.dumps(request.get("headers", [])),
-                    "Response Headers": json.dumps(response.get("headers", [])),
-                    "Response Time (ms)": timings.get("wait", "N/A"),
-                })
-
-            # Convert to DataFrame
-            df = pd.DataFrame(extracted_data)
-
-            # Display the data
-            st.write("### Parsed HAR Data:")
-            st.dataframe(df)
-
-            # Convert to CSV
+            # Plot the time series data
+            fig, ax = plt.subplots(figsize=(10, 5))
+            ax.plot(df.index, df["Open"], label="Opening Price", linewidth=1, color="orange")
+            ax.plot(df.index, df["Close"], label="Closing Price", linewidth=1, color="blue")
+            ax.plot(df.index, df["High"], label="High Price", linewidth=1, color="green")
+            ax.plot(df.index, df["Low"], label="Low Price", linewidth=1, color="red")
+            ax.set_title(f"{selected_stock} Stock Prices")
+            ax.set_xlabel("Date")
+            ax.set_ylabel("Price (USD)")
+            ax.legend()
+            ax.grid()
+            
+            # Display plot
+            st.pyplot(fig)
+            
+            # Export data as CSV
             csv_buffer = BytesIO()
-            df.to_csv(csv_buffer, index=False)
+            df.to_csv(csv_buffer, index=True)
             csv_buffer.seek(0)
-
-            # Provide download button
             st.download_button(
-                label="Download CSV",
+                label="Download Data as CSV",
                 data=csv_buffer,
-                file_name="parsed_har_data.csv",
+                file_name=f"{stock_symbol}_stock_data.csv",
                 mime="text/csv"
             )
-    except Exception as e:
-        st.error(f"Error parsing HAR file: {e}")
+    else:
+        st.warning("Please select a valid start and end date.")
