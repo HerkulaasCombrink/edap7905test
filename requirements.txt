@@ -6,6 +6,7 @@ scipy
 yfinance
 bs4
 requests
+xlml
 #random
 #time
 #pygame
