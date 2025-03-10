@@ -4,6 +4,8 @@ streamlit
 networkx
 scipy
 yfinance
+bs4
+requests
 #random
 #time
 #pygame
