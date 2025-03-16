@@ -122,7 +122,7 @@ if st.sidebar.button("Start Simulation"):
         
         progress_bar.progress((t + 1) / steps)
         status_text.text(f"Simulation Step {t + 1}/{steps}")
-        if t % 10 == 0:
+        if t % 1 == 0:
             fig, ax = plt.subplots(figsize=(12, 10))
             nx.draw(G, pos=network_pos, node_color=[node_colors[n] for n in G.nodes()], node_size=[node_sizes[n] for n in G.nodes()], edge_color="lightgray", with_labels=False)
             network_plot.pyplot(fig)
