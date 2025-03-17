@@ -46,16 +46,24 @@ skep_strategies = {}  # Store selected skeptic strategy
 agent_types = {"Believer": set(), "Skeptic": set(), "Neutral": set(), "Influencer": set()}
 rewards = {"Skeptic": [0], "Believer": [0]}  # Track cumulative rewards over time
 # Initialize belief counts for tracking
+# Assign belief states to nodes properly before simulation starts
+# Assign belief states and strategies
+for node in G.nodes():
+    belief = random.choices(belief_states, weights=[0.4, 0.3, 0.2, 0.1])[0]
+    agent_types[belief].add(node)
+    
+    if belief == "Skeptic":
+        skep_strategies[node] = skeptic_algorithm  # Ensure all skeptics have a strategy
+    elif belief == "Believer":
+        skep_strategies[node] = believer_algorithm  # Ensure believers have a strategy
+
+# Ensure the belief counts are initialized correctly
 belief_counts = {
     "Believers": [len(agent_types["Believer"])],
     "Skeptics": [len(agent_types["Skeptic"])],
     "Neutrals": [len(agent_types["Neutral"])],
     "Influencers": [len(agent_types["Influencer"])]
 }
-if len(agent_types["Believer"]) == 0:
-    belief_counts["Believers"] = [0]
-if len(agent_types["Skeptic"]) == 0:
-    belief_counts["Skeptics"] = [0]
 # Simulation button to start execution
 if st.sidebar.button("Start Simulation"):
     progress_bar = st.progress(0)
@@ -65,15 +73,7 @@ if st.sidebar.button("Start Simulation"):
     
     # Initialize SSI tracking over time
     SSI_over_time = []
-# Ensure belief state transitions update the node colors dynamically
-if node in agent_types["Believer"]:
-    node_colors[node] = "red"
-elif node in agent_types["Skeptic"]:
-    node_colors[node] = "blue"
-elif node in agent_types["Neutral"]:
-    node_colors[node] = "gray"
-elif node in agent_types["Influencer"]:
-    node_colors[node] = "green"
+
     for t in range(steps):
         reward_skeptic = rewards["Skeptic"][-1]
         reward_believer = rewards["Believer"][-1]
@@ -91,9 +91,12 @@ elif node in agent_types["Influencer"]:
             # Compute SSI for this node
             SSI[node] = max(0, min(1, SSI[node] + propagation_effect - fact_check_effect + misinformation_effect))
 
-            if node in agent_types["Believer"]:  # Believers applying selected strategy
-                if believer_algorithm == "E-Greedy" and random.random() < epsilon:
-                    target = random.choice(neighbors)  # Explore new target
+            if target in agent_types["Neutral"]:  # Convert neutral to believer
+                agent_types["Believer"].add(target)
+                agent_types["Neutral"].discard(target)  # Use discard to prevent errors
+                node_colors[target] = "red"  # Update visualization dynamically
+                reward_believer += 1
+                SSI[target] += misinformation_effect  # Increase stress for misinformation spread
                 
                 if believer_algorithm == "UCB":
                     if random.random() < misinformation_spread_prob:
@@ -177,7 +180,7 @@ elif node in agent_types["Influencer"]:
             axs[1].set_title("Neutral Count Over Time")
             axs[1].legend()
 
-            axs[2].plot(range(len(SSI)), list(SSI.values()), label="SSI Over Time", color="black")
+            axs[2].plot(range(len(SSI_over_time)), SSI_over_time, label="SSI Over Time", color="black")
             axs[2].set_title("Social Stress Indicator (SSI) Over Time")
             axs[2].legend()
 
