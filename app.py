@@ -25,15 +25,16 @@ beta = st.sidebar.slider("Fact-Check Impact (β)", min_value=0.0, max_value=1.0,
 gamma = st.sidebar.slider("Misinformation Impact (γ)", min_value=0.0, max_value=1.0, value=0.2, step=0.05)
 lambda_factor = st.sidebar.slider("Network Effect Factor (λ)", min_value=1.0, max_value=10.0, value=3.0, step=0.5)
 # Initialize Social Stress Indicator (SSI) for all nodes
-SSI = {node: random.uniform(0.1, 0.5) for node in G.nodes()}  # Random initial stress values
-SSI = {node: random.uniform(0.1, 0.5) for node in G.nodes()}
+
 # Algorithm selection
 believer_algorithm = st.sidebar.selectbox("Believer Strategy", ["E-Greedy", "Thompson Sampling", "UCB", "Random"])
 skeptic_algorithm = st.sidebar.selectbox("Skeptic Strategy", ["UCB", "Thompson Sampling", "Random"])
 
+
 # Create a Scale-Free Network
 G = nx.barabasi_albert_graph(N, 3)
-SSI = {node: random.uniform(0.1, 0.5) for node in G.nodes()}  # Fixed layout for consistent visualization
+network_pos = nx.spring_layout(G)  # Fixed layout for consistent visualization
+SSI = {node: random.uniform(0.1, 0.5) for node in G.nodes()}
 
 # Assign belief states to nodes
 belief_states = ["Believer", "Skeptic", "Neutral", "Influencer"]
