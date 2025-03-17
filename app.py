@@ -132,15 +132,13 @@ if st.sidebar.button("Start Simulation"):
 
             elif node in agent_types["Skeptic"]:  # Skeptics applying selected strategy
                 if skep_strategies.get(node, "UCB") == "UCB":
-                    if target in agent_types["Believer"]:
+                    if target in agent_types["Believer"] and random.random() < fact_check_prob * 1.5:  # Higher chance to convert
                         agent_types["Believer"].remove(target)
                         agent_types["Skeptic"].add(target)
-                        agent_types["Neutral"].discard(target)  # Ensure it's not in neutral
-                        agent_types["Influencer"].discard(target)  # Ensure it's not an influencer
-                        skep_strategies[target] = "UCB"
-                        node_colors[target] = "blue"  # Update visualization
+                        skep_strategies[target] = skeptic_algorithm  # Assign strategy to new skeptic
+                        node_colors[target] = "blue"
                         reward_skeptic += 1
-                        SSI[target] -= fact_check_effect  # Reduce stress for successful fact-checking
+                        SSI[target] = max(0, SSI[target] - (fact_check_effect * random.uniform(0.8, 1.2)))  # Reduce stress with deviation
 
                 elif skep_strategies.get(node, "UCB") == "Thompson Sampling":
                     if random.betavariate(2, 5) > 0.5 and target in agent_types["Believer"]:
