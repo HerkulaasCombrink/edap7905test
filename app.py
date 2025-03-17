@@ -26,7 +26,7 @@ gamma = st.sidebar.slider("Misinformation Impact (γ)", min_value=0.0, max_value
 lambda_factor = st.sidebar.slider("Network Effect Factor (λ)", min_value=1.0, max_value=10.0, value=3.0, step=0.5)
 # Initialize Social Stress Indicator (SSI) for all nodes
 SSI = {node: random.uniform(0.1, 0.5) for node in G.nodes()}  # Random initial stress values
-
+SSI = {node: random.uniform(0.1, 0.5) for node in G.nodes()}
 # Algorithm selection
 believer_algorithm = st.sidebar.selectbox("Believer Strategy", ["E-Greedy", "Thompson Sampling", "UCB", "Random"])
 skeptic_algorithm = st.sidebar.selectbox("Skeptic Strategy", ["UCB", "Thompson Sampling", "Random"])
