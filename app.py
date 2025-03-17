@@ -50,7 +50,7 @@ for node in list(G.nodes()):
         target = random.choice(neighbors)
 
             # Update SSI using the propagation model
-            propagation_effect = (alpha / lambda_factor) * sum(SSI[n] for n in neighbors) / len(neighbors)
+propagation_effect = (alpha / lambda_factor) * sum(SSI[n] for n in neighbors) / len(neighbors)
             misinformation_effect = (gamma / lambda_factor) * misinformation_spread_prob
             fact_check_effect = (beta / lambda_factor) * fact_check_prob
 
