@@ -25,7 +25,15 @@ beta = st.sidebar.slider("Fact-Check Impact (β)", min_value=0.0, max_value=1.0,
 gamma = st.sidebar.slider("Misinformation Impact (γ)", min_value=0.0, max_value=1.0, value=0.2, step=0.05)
 lambda_factor = st.sidebar.slider("Network Effect Factor (λ)", min_value=1.0, max_value=10.0, value=3.0, step=0.5)
 # Initialize Social Stress Indicator (SSI) for all nodes
-
+# Simulation button to start execution
+if st.sidebar.button("Start Simulation"):
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    network_plot = st.empty()
+    graph_plot = st.empty()
+    
+    # Initialize SSI tracking over time
+    SSI_over_time = []
 # Algorithm selection
 believer_algorithm = st.sidebar.selectbox("Believer Strategy", ["E-Greedy", "Thompson Sampling", "UCB", "Random"])
 skeptic_algorithm = st.sidebar.selectbox("Skeptic Strategy", ["UCB", "Thompson Sampling", "Random"])
