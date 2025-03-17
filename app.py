@@ -172,7 +172,7 @@ if st.sidebar.button("Start Simulation"):
                         SSI[target] -= fact_check_effect  # Reduce stress for successful fact-checking
 
                 # Skeptic conversion back to Neutral
-                if node in agent_types["Skeptic"] and random.random() < skeptic_conversion_prob:
+                if node in agent_types["Skeptic"] and random.random() < skeptic_conversion_prob * 0.5:
                     agent_types["Skeptic"].discard(node)  # Use discard to avoid KeyErrors
                     agent_types["Neutral"].add(node)
                     node_colors[node] = "gray"     
