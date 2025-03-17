@@ -45,7 +45,7 @@ rewards = {"Skeptic": [0], "Believer": [0]}  # Track cumulative rewards over tim
 
 for node in list(G.nodes()):
         neighbors = list(G.neighbors(node))
-            if not neighbors:
+        if not neighbors:
                 continue
             target = random.choice(neighbors)
 
