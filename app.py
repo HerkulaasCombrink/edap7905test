@@ -44,11 +44,14 @@ skep_strategies = {}  # Store selected skeptic strategy
 agent_types = {"Believer": set(), "Skeptic": set(), "Neutral": set(), "Influencer": set()}
 rewards = {"Skeptic": [0], "Believer": [0]}  # Track cumulative rewards over time
 
-for node in list(G.nodes()):
+for t in range(steps):
+    reward_skeptic = rewards["Skeptic"][-1]
+    reward_believer = rewards["Believer"][-1]
+
+    for node in list(G.nodes()):
         neighbors = list(G.neighbors(node))
         if not neighbors:
-                continue
-        target = random.choice(neighbors)
+            continue
 
             # Update SSI using the propagation model
 propagation_effect = (alpha / lambda_factor) * sum(SSI[n] for n in neighbors) / len(neighbors)
