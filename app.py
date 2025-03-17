@@ -57,12 +57,12 @@ fact_check_effect = (beta / lambda_factor) * fact_check_prob
             # Compute SSI for this node
 SSI[node] = SSI[node] + propagation_effect - fact_check_effect + misinformation_effect
 
-            if node in agent_types["Believer"]:  # Believers applying selected strategy
-                if believer_algorithm == "E-Greedy" and random.random() < epsilon:
-                    target = random.choice(neighbors)  # Explore new target
-                if believer_algorithm == "UCB":
-                    if random.random() < misinformation_spread_prob:
-                        target = max(neighbors, key=lambda n: len(list(G.neighbors(n))), default=target)
+if node in agent_types["Believer"]:  # Believers applying selected strategy
+        if believer_algorithm == "E-Greedy" and random.random() < epsilon:
+                target = random.choice(neighbors)  # Explore new target
+        if believer_algorithm == "UCB":
+                if random.random() < misinformation_spread_prob:
+                target = max(neighbors, key=lambda n: len(list(G.neighbors(n))), default=target)
 
                 if random.random() < misinformation_spread_prob and target in agent_types["Neutral"]:
                     agent_types["Believer"].add(target)
