@@ -43,5 +43,5 @@ if st.session_state.button2_enabled:
         mime="text/csv"
     )
 
-# Add a local image
-st.image("sample_image.png", caption="Data Visualization Example")
+# Add an image from a URL
+st.image("https://www.w3.org/Icons/w3c_home.png", caption="Data Visualization Example")
