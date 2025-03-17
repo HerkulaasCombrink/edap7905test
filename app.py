@@ -93,7 +93,8 @@ if st.sidebar.button("Start Simulation"):
             fact_check_effect = (beta / lambda_factor) * fact_check_prob
 
             # Compute SSI for this node
-            SSI[node] = max(0, min(1, SSI[node] + propagation_effect - fact_check_effect + misinformation_effect))
+            stress_variation = random.uniform(-0.05, 0.05)  # Adds small variation in stress
+            SSI[node] = max(0, min(1, SSI[node] + propagation_effect - fact_check_effect + misinformation_effect + stress_variation))
 
             if neighbors:
                 target = random.choice(neighbors)  # Always set target
