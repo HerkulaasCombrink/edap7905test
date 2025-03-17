@@ -150,6 +150,10 @@ if st.sidebar.button("Start Simulation"):
         rewards["Believer"].append(reward_believer)
         rewards["Skeptic"].append(reward_skeptic)
 
+        for key in ["Believers", "Skeptics", "Neutrals", "Influencers"]:
+            if key not in belief_counts:
+                belief_counts[key] = []  # Initialize key if missing
+
         belief_counts["Believers"].append(len(agent_types["Believer"]))
         belief_counts["Skeptics"].append(len(agent_types["Skeptic"]))
         belief_counts["Neutrals"].append(len(agent_types["Neutral"]))
