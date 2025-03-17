@@ -137,4 +137,4 @@ if node in agent_types["Believer"]:  # Believers applying selected strategy
             axs[2].legend()
 
             graph_plot.pyplot(fig)
-    st.success("Simulation Complete")
+st.success("Simulation Complete")
