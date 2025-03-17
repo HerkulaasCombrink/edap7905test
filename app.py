@@ -44,6 +44,14 @@ node_sizes = {}
 skep_strategies = {}  # Store selected skeptic strategy
 agent_types = {"Believer": set(), "Skeptic": set(), "Neutral": set(), "Influencer": set()}
 rewards = {"Skeptic": [0], "Believer": [0]}  # Track cumulative rewards over time
+# Initialize belief counts for tracking
+belief_counts = {
+    "Believers": [len(agent_types["Believer"])],
+    "Skeptics": [len(agent_types["Skeptic"])],
+    "Neutrals": [len(agent_types["Neutral"])],
+    "Influencers": [len(agent_types["Influencer"])]
+}
+
 # Simulation button to start execution
 if st.sidebar.button("Start Simulation"):
     progress_bar = st.progress(0)
