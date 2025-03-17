@@ -43,5 +43,5 @@ if st.session_state.button2_enabled:
         mime="text/csv"
     )
 
-# Add a cool image
-st.image("https://source.unsplash.com/800x400/?data,technology", caption="Random Data Visualization")
+# Add a local image
+st.image("sample_image.png", caption="Data Visualization Example")
