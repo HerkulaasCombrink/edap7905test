@@ -77,7 +77,7 @@ if node in agent_types["Believer"]:  # Believers applying selected strategy
                     reward_believer += 2
                     SSI[target] += misinformation_effect  # Increase stress for misinformation spread
 
-            elif node in agent_types["Skeptic"]:  # Skeptics applying selected strategy
+                    elif node in agent_types["Skeptic"]:  # Skeptics applying selected strategy
                 if skep_strategies.get(node, "UCB") == "UCB":
                     if random.random() < fact_check_prob and target in agent_types["Believer"]:
                         agent_types["Skeptic"].add(target)
