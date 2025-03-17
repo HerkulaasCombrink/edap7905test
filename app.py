@@ -190,7 +190,7 @@ if st.sidebar.button("Start Simulation"):
 
         if t % 10 == 0:  # Update visualization every 10 steps
             fig, ax = plt.subplots(figsize=(12, 10))
-            node_colors_updated = []
+            
             for n in G.nodes():
                 if n in agent_types["Believer"]:
                     node_colors_updated.append("red")
