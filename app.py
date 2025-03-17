@@ -65,7 +65,15 @@ if st.sidebar.button("Start Simulation"):
     
     # Initialize SSI tracking over time
     SSI_over_time = []
-    
+# Ensure belief state transitions update the node colors dynamically
+if node in agent_types["Believer"]:
+    node_colors[node] = "red"
+elif node in agent_types["Skeptic"]:
+    node_colors[node] = "blue"
+elif node in agent_types["Neutral"]:
+    node_colors[node] = "gray"
+elif node in agent_types["Influencer"]:
+    node_colors[node] = "green"
     for t in range(steps):
         reward_skeptic = rewards["Skeptic"][-1]
         reward_believer = rewards["Believer"][-1]
