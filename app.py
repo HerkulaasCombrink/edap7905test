@@ -50,14 +50,19 @@ rewards = {"Skeptic": [0], "Believer": [0]}  # Track cumulative rewards over tim
 # Assign belief states and strategies
 for node in G.nodes():
     belief = random.choices(belief_states, weights=[0.4, 0.3, 0.2, 0.1])[0]
-    agent_types[belief].add(node)
     
+    for state in belief_states:  # Ensure all states are initialized
+        if state not in agent_types:
+            agent_types[state] = set()
+    
+    agent_types[belief].add(node)
+
+    # Assign strategies properly
     if belief == "Skeptic":
-        skep_strategies[node] = skeptic_algorithm  # Ensure all skeptics have a strategy
+        skep_strategies[node] = skeptic_algorithm
     elif belief == "Believer":
         skep_strategies[node] = believer_algorithm
     elif belief == "Influencer":
-        agent_types["Influencer"].add(node)
         node_colors[node] = "green"
         node_sizes[node] = 300  # Make influencers larger
 
