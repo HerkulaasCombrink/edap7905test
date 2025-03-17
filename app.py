@@ -43,8 +43,8 @@ skep_strategies = {}  # Store selected skeptic strategy
 agent_types = {"Believer": set(), "Skeptic": set(), "Neutral": set(), "Influencer": set()}
 rewards = {"Skeptic": [0], "Believer": [0]}  # Track cumulative rewards over time
 
-for node in list(G.nodes()):
-            neighbors = list(G.neighbors(node))
+            for node in list(G.nodes()):
+                        neighbors = list(G.neighbors(node))
             if not neighbors:
                 continue
             target = random.choice(neighbors)
