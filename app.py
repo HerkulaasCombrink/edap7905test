@@ -203,7 +203,7 @@ if st.sidebar.button("Start Simulation"):
 
             fig, ax = plt.subplots(figsize=(12, 10))
             nx.draw(G, pos=network_pos, 
-                node_color=node_colors_updated, 
+                node_color=[node_colors[n] for n in G.nodes()], 
                 node_size=[100 + 300 * SSI[n] for n in G.nodes()], 
                 edge_color="gray", with_labels=False)
             network_plot.pyplot(fig)
