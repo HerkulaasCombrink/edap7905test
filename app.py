@@ -99,12 +99,19 @@ if st.sidebar.button("Start Simulation"):
             if neighbors:
                 target = random.choice(neighbors)  # Always set target
 
-                if target in agent_types["Neutral"] and random.random() < misinformation_spread_prob:
-                    agent_types["Believer"].add(target)
-                    agent_types["Neutral"].discard(target)
-                    node_colors[target] = "red"
-                    reward_believer += 1
-                    SSI[target] += misinformation_effect  # Spread stress
+                if target in agent_types["Neutral"]:
+                    if random.random() < misinformation_spread_prob:
+                        agent_types["Believer"].add(target)
+                        agent_types["Neutral"].discard(target)
+                        node_colors[target] = "red"
+                        reward_believer += 1
+                        SSI[target] += misinformation_effect * random.uniform(0.8, 1.2)  # Adds variability to stress
+                elif random.random() < fact_check_prob:  # Skeptics can prevent conversion
+                        agent_types["Skeptic"].add(target)
+                        agent_types["Neutral"].discard(target)
+                        node_colors[target] = "blue"
+                        reward_skeptic += 1
+                        SSI[target] -= fact_check_effect  # Reduce stress when fact-checking succeeds
 
                 elif target in agent_types["Skeptic"] and random.random() < (misinformation_spread_prob * 0.5):
                     agent_types["Believer"].add(target)
