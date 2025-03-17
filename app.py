@@ -151,11 +151,15 @@ if st.sidebar.button("Start Simulation"):
 
         if t % 10 == 0:  # Update visualization every 10 steps
             fig, ax = plt.subplots(figsize=(12, 10))
-            nx.draw(G, pos=network_pos, node_color=[node_colors[n] for n in G.nodes()], 
-                    node_size=[100 + 300 * SSI[n] for n in G.nodes()], edge_color="lightgray", with_labels=False)
+            nx.draw(G, pos=network_pos, 
+                node_color=[node_colors[n] for n in G.nodes()], 
+                node_size=[100 + 300 * SSI[n] for n in G.nodes()], 
+                edge_color="lightgray", with_labels=False)
             network_plot.pyplot(fig)
 
+# Time series graphs update every 10 steps
             fig, axs = plt.subplots(1, 3, figsize=(18, 6))
+
             axs[0].plot(range(len(belief_counts["Believers"])), belief_counts["Believers"], label="Believers", color="red")
             axs[0].plot(range(len(belief_counts["Skeptics"])), belief_counts["Skeptics"], label="Skeptics", color="blue")
             axs[0].set_title("Believers vs. Skeptics Over Time")
@@ -165,10 +169,8 @@ if st.sidebar.button("Start Simulation"):
             axs[1].set_title("Neutral Count Over Time")
             axs[1].legend()
 
-            axs[2].plot(range(len(SSI_over_time)), SSI_over_time, label="SSI Over Time", color="black")
+            axs[2].plot(range(len(SSI)), list(SSI.values()), label="SSI Over Time", color="black")
             axs[2].set_title("Social Stress Indicator (SSI) Over Time")
-            axs[2].set_xlabel("Time Steps")
-            axs[2].set_ylabel("SSI Value")
             axs[2].legend()
 
             graph_plot.pyplot(fig)
