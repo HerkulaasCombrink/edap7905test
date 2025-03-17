@@ -49,7 +49,8 @@ node_colors = {
 }
 node_sizes = {node: 80 for node in G.nodes()}  # Default to small size
 skep_strategies = {}  # Store selected skeptic strategy
-agent_types = {"Believer": set(), "Skeptic": set(), "Neutral": set(), "Influencer": set()}
+belief_states = ["Believer", "Skeptic", "Neutral", "Influencer"]
+agent_types = {state: set() for state in belief_states}  # Safely initialize
 rewards = {"Skeptic": [0], "Believer": [0]}  # Track cumulative rewards over time
 # Initialize belief counts for tracking
 # Assign belief states to nodes properly before simulation starts
