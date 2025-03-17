@@ -62,7 +62,7 @@ if node in agent_types["Believer"]:  # Believers applying selected strategy
                 target = random.choice(neighbors)  # Explore new target
         if believer_algorithm == "UCB":
                 if random.random() < misinformation_spread_prob:
-                target = max(neighbors, key=lambda n: len(list(G.neighbors(n))), default=target)
+                        target = max(neighbors, key=lambda n: len(list(G.neighbors(n))), default=target)
 
                 if random.random() < misinformation_spread_prob and target in agent_types["Neutral"]:
                     agent_types["Believer"].add(target)
