@@ -118,9 +118,10 @@ if st.sidebar.button("Start Simulation"):
                         reward_skeptic += 1
                         SSI[target] -= fact_check_effect  # Reduce stress when fact-checking succeeds
 
-                elif target in agent_types["Skeptic"] and random.random() < (misinformation_spread_prob * 0.5):
+                if target in agent_types["Skeptic"] and random.random() < (misinformation_spread_prob * 0.5):
                     agent_types["Believer"].add(target)
-                    agent_types["Skeptic"].discard(target)
+                    if target in agent_types["Skeptic"]:
+                        agent_types["Skeptic"].remove(target)  # Ensure proper removal
                     node_colors[target] = "red"
                     reward_believer += 1
                     SSI[target] += misinformation_effect
