@@ -33,7 +33,7 @@ skeptic_algorithm = st.sidebar.selectbox("Skeptic Strategy", ["UCB", "Thompson S
 
 # Create a Scale-Free Network
 G = nx.barabasi_albert_graph(N, 3)
-network_pos = nx.spring_layout(G)  # Fixed layout for consistent visualization
+SSI = {node: random.uniform(0.1, 0.5) for node in G.nodes()}  # Fixed layout for consistent visualization
 
 # Assign belief states to nodes
 belief_states = ["Believer", "Skeptic", "Neutral", "Influencer"]
