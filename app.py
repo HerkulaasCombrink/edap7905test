@@ -91,12 +91,15 @@ if st.sidebar.button("Start Simulation"):
             # Compute SSI for this node
             SSI[node] = max(0, min(1, SSI[node] + propagation_effect - fact_check_effect + misinformation_effect))
 
-            if target in agent_types["Neutral"]:  # Convert neutral to believer
-                agent_types["Believer"].add(target)
-                agent_types["Neutral"].discard(target)  # Use discard to prevent errors
-                node_colors[target] = "red"  # Update visualization dynamically
-                reward_believer += 1
-                SSI[target] += misinformation_effect  # Increase stress for misinformation spread
+            if neighbors:
+                target = random.choice(neighbors)  # Always set target
+
+                if target in agent_types["Neutral"]:  # Convert neutral to believer
+                    agent_types["Believer"].add(target)
+                    agent_types["Neutral"].discard(target)  # Use discard to avoid KeyErrors
+                    node_colors[target] = "red"  # Update visualization dynamically
+                    reward_believer += 1
+                    SSI[target] += misinformation_effect  # Increase stress for misinformation spread
                 
                 if believer_algorithm == "UCB":
                     if random.random() < misinformation_spread_prob:
