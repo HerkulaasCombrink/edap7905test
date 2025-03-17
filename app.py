@@ -145,9 +145,11 @@ if st.sidebar.button("Start Simulation"):
 
             elif node in agent_types["Skeptic"]:  # Skeptics applying selected strategy
                 if skep_strategies.get(node, "UCB") == "UCB":
-                    if target in agent_types["Believer"] and random.random() < fact_check_prob * 1.5:  # Higher chance to convert
-                        agent_types["Believer"].discard(target)
+                    if target in agent_types["Believer"] and random.random() < fact_check_prob * 1.5:
                         agent_types["Skeptic"].add(target)
+                        if target in agent_types["Believer"]:
+                            agent_types["Believer"].remove(target)  # Ensure proper removal
+                        skep_strategies[target] = skeptic_algorithm  # Assign strategy to new skeptic
                         node_colors[target] = "blue"
                         reward_skeptic += 1
                         SSI[target] = max(0, SSI[target] - (fact_check_effect * random.uniform(0.8, 1.2)))  # Reduce stress
