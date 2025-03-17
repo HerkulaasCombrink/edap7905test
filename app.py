@@ -203,6 +203,7 @@ if st.sidebar.button("Start Simulation"):
                     "blue" if node in agent_types["Skeptic"] else
                     "green" if node in agent_types["Influencer"] else
                     "gray" for node in G.nodes()
+            for node in G.nodes()
 }
 
             fig, ax = plt.subplots(figsize=(12, 10))
