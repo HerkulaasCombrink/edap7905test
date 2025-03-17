@@ -47,7 +47,7 @@ for node in list(G.nodes()):
         neighbors = list(G.neighbors(node))
         if not neighbors:
                 continue
-            target = random.choice(neighbors)
+        target = random.choice(neighbors)
 
             # Update SSI using the propagation model
             propagation_effect = (alpha / lambda_factor) * sum(SSI[n] for n in neighbors) / len(neighbors)
