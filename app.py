@@ -52,7 +52,10 @@ belief_counts = {
     "Neutrals": [len(agent_types["Neutral"])],
     "Influencers": [len(agent_types["Influencer"])]
 }
-
+if len(agent_types["Believer"]) == 0:
+    belief_counts["Believers"] = [0]
+if len(agent_types["Skeptic"]) == 0:
+    belief_counts["Skeptics"] = [0]
 # Simulation button to start execution
 if st.sidebar.button("Start Simulation"):
     progress_bar = st.progress(0)
