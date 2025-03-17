@@ -191,15 +191,15 @@ if st.sidebar.button("Start Simulation"):
         if t % 10 == 0:  # Update visualization every 10 steps
             fig, ax = plt.subplots(figsize=(12, 10))
             
-            for n in G.nodes():
-                if n in agent_types["Believer"]:
-                    node_colors_updated.append("red")
-                elif n in agent_types["Skeptic"]:
-                    node_colors_updated.append("blue")
-                elif n in agent_types["Influencer"]:
-                    node_colors_updated.append("green")
+            for node in G.nodes():
+                if node in agent_types["Believer"]:
+                    node_colors[node] = "red"
+                elif node in agent_types["Skeptic"]:
+                    node_colors[node] = "blue"
+                elif node in agent_types["Influencer"]:
+                    node_colors[node] = "green"
                 else:
-                    node_colors_updated.append("gray")  # Neutral
+                    node_colors[node] = "gray"  # Neutral
 
             fig, ax = plt.subplots(figsize=(12, 10))
             nx.draw(G, pos=network_pos, 
