@@ -55,7 +55,9 @@ for node in G.nodes():
     if belief == "Skeptic":
         skep_strategies[node] = skeptic_algorithm  # Ensure all skeptics have a strategy
     elif belief == "Believer":
-        skep_strategies[node] = believer_algorithm  # Ensure believers have a strategy
+        skep_strategies[node] = believer_algorithm
+    elif belief == "Skeptic":
+        skep_strategies[node] = skeptic_algorithm  # Ensure skeptics get a strategy
 
 # Ensure the belief counts are initialized correctly
 belief_counts = {
@@ -94,12 +96,13 @@ if st.sidebar.button("Start Simulation"):
             if neighbors:
                 target = random.choice(neighbors)  # Always set target
 
-                if target in agent_types["Neutral"]:  # Convert neutral to believer
+                if target in agent_types["Neutral"] or target in agent_types["Skeptic"]:
                     agent_types["Believer"].add(target)
-                    agent_types["Neutral"].discard(target)  # Use discard to avoid KeyErrors
-                    node_colors[target] = "red"  # Update visualization dynamically
+                    agent_types["Neutral"].discard(target)
+                    agent_types["Skeptic"].discard(target)  # Skeptics can become believers
+                    node_colors[target] = "red"
                     reward_believer += 1
-                    SSI[target] += misinformation_effect  # Increase stress for misinformation spread
+                    SSI[target] += misinformation_effect  # Spread stress
                 
                 if believer_algorithm == "UCB":
                     if random.random() < misinformation_spread_prob:
@@ -120,10 +123,12 @@ if st.sidebar.button("Start Simulation"):
 
             elif node in agent_types["Skeptic"]:  # Skeptics applying selected strategy
                 if skep_strategies.get(node, "UCB") == "UCB":
-                    if random.random() < fact_check_prob and target in agent_types["Believer"]:
+                    if target in agent_types["Believer"]:
                         agent_types["Believer"].remove(target)
                         agent_types["Skeptic"].add(target)
-                        node_colors[target] = "blue"
+                        agent_types["Neutral"].discard(target)  # Ensure it's not in neutral
+                        agent_types["Influencer"].discard(target)  # Ensure it's not an influencer
+                        node_colors[target] = "blue"  # Update visualization
                         reward_skeptic += 1
                         SSI[target] -= fact_check_effect  # Reduce stress for successful fact-checking
 
@@ -131,6 +136,7 @@ if st.sidebar.button("Start Simulation"):
                     if random.betavariate(2, 5) > 0.5 and target in agent_types["Believer"]:
                         agent_types["Believer"].remove(target)
                         agent_types["Skeptic"].add(target)
+                        skep_strategies[target] = "UCB"
                         node_colors[target] = "blue"
                         reward_skeptic += 1
                         SSI[target] -= fact_check_effect  # Reduce stress for successful fact-checking
@@ -172,7 +178,7 @@ if st.sidebar.button("Start Simulation"):
             nx.draw(G, pos=network_pos, 
                 node_color=[node_colors[n] for n in G.nodes()], 
                 node_size=[100 + 300 * SSI[n] for n in G.nodes()], 
-                edge_color="lightgray", with_labels=False)
+                edge_color="gray", with_labels=False)
             network_plot.pyplot(fig)
 
 # Time series graphs update every 10 steps
