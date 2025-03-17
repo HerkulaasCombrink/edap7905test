@@ -39,8 +39,9 @@ SSI = {node: random.uniform(0.1, 0.5) for node in G.nodes()}
 
 # Assign belief states to nodes
 belief_states = ["Believer", "Skeptic", "Neutral", "Influencer"]
-node_colors = {}
-node_sizes = {}
+# Initialize node colors before the simulation starts
+node_colors = {node: "gray" for node in G.nodes()}  # Default to neutral color
+node_sizes = {node: 80 for node in G.nodes()}  # Default to small size
 skep_strategies = {}  # Store selected skeptic strategy
 agent_types = {"Believer": set(), "Skeptic": set(), "Neutral": set(), "Influencer": set()}
 rewards = {"Skeptic": [0], "Believer": [0]}  # Track cumulative rewards over time
