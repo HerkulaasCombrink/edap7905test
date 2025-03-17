@@ -40,7 +40,13 @@ SSI = {node: random.uniform(0.1, 0.5) for node in G.nodes()}
 # Assign belief states to nodes
 belief_states = ["Believer", "Skeptic", "Neutral", "Influencer"]
 # Initialize node colors before the simulation starts
-node_colors = {node: "gray" for node in G.nodes()}  # Default to neutral color
+node_colors = {
+    node: "red" if node in agent_types["Believer"] else
+          "blue" if node in agent_types["Skeptic"] else
+          "green" if node in agent_types["Influencer"] else
+          "gray"
+    for node in G.nodes()
+}
 node_sizes = {node: 80 for node in G.nodes()}  # Default to small size
 skep_strategies = {}  # Store selected skeptic strategy
 agent_types = {"Believer": set(), "Skeptic": set(), "Neutral": set(), "Influencer": set()}
@@ -181,9 +187,9 @@ if st.sidebar.button("Start Simulation"):
         rewards["Believer"].append(reward_believer)
         rewards["Skeptic"].append(reward_skeptic)
 
-        for key in ["Believers", "Skeptics", "Neutrals", "Influencers"]:
-            if key not in belief_counts:
-                belief_counts[key] = []  # Initialize key if missing
+#        for key in ["Believers", "Skeptics", "Neutrals", "Influencers"]:
+#            if key not in belief_counts:
+#                belief_counts[key] = []  # Initialize key if missing
 
         belief_counts["Believers"].append(len(agent_types["Believer"]))
         belief_counts["Skeptics"].append(len(agent_types["Skeptic"]))
