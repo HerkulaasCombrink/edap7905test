@@ -26,14 +26,7 @@ gamma = st.sidebar.slider("Misinformation Impact (γ)", min_value=0.0, max_value
 lambda_factor = st.sidebar.slider("Network Effect Factor (λ)", min_value=1.0, max_value=10.0, value=3.0, step=0.5)
 # Initialize Social Stress Indicator (SSI) for all nodes
 # Simulation button to start execution
-if st.sidebar.button("Start Simulation"):
-    progress_bar = st.progress(0)
-    status_text = st.empty()
-    network_plot = st.empty()
-    graph_plot = st.empty()
-    
-    # Initialize SSI tracking over time
-    SSI_over_time = []
+
 # Algorithm selection
 believer_algorithm = st.sidebar.selectbox("Believer Strategy", ["E-Greedy", "Thompson Sampling", "UCB", "Random"])
 skeptic_algorithm = st.sidebar.selectbox("Skeptic Strategy", ["UCB", "Thompson Sampling", "Random"])
@@ -51,29 +44,39 @@ node_sizes = {}
 skep_strategies = {}  # Store selected skeptic strategy
 agent_types = {"Believer": set(), "Skeptic": set(), "Neutral": set(), "Influencer": set()}
 rewards = {"Skeptic": [0], "Believer": [0]}  # Track cumulative rewards over time
+# Simulation button to start execution
+if st.sidebar.button("Start Simulation"):
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    network_plot = st.empty()
+    graph_plot = st.empty()
+    
+    # Initialize SSI tracking over time
+    SSI_over_time = []
+    
+    for t in range(steps):
+        reward_skeptic = rewards["Skeptic"][-1]
+        reward_believer = rewards["Believer"][-1]
 
-for t in range(steps):
-    reward_skeptic = rewards["Skeptic"][-1]
-    reward_believer = rewards["Believer"][-1]
-
-    for node in list(G.nodes()):
-        neighbors = list(G.neighbors(node))
-        if not neighbors:
-            continue
+        for node in list(G.nodes()):
+            neighbors = list(G.neighbors(node))
+            if not neighbors:
+                continue
 
             # Update SSI using the propagation model
-propagation_effect = (alpha / lambda_factor) * sum(SSI[n] for n in neighbors) / len(neighbors)
-misinformation_effect = (gamma / lambda_factor) * misinformation_spread_prob
-fact_check_effect = (beta / lambda_factor) * fact_check_prob
+            propagation_effect = (alpha / lambda_factor) * sum(SSI[n] for n in neighbors) / max(1, len(neighbors))
+            misinformation_effect = (gamma / lambda_factor) * misinformation_spread_prob
+            fact_check_effect = (beta / lambda_factor) * fact_check_prob
 
             # Compute SSI for this node
-SSI[node] = SSI[node] + propagation_effect - fact_check_effect + misinformation_effect
+            SSI[node] = max(0, min(1, SSI[node] + propagation_effect - fact_check_effect + misinformation_effect))
 
-if node in agent_types["Believer"]:  # Believers applying selected strategy
-        if believer_algorithm == "E-Greedy" and random.random() < epsilon:
-                target = random.choice(neighbors)  # Explore new target
-        if believer_algorithm == "UCB":
-                if random.random() < misinformation_spread_prob:
+            if node in agent_types["Believer"]:  # Believers applying selected strategy
+                if believer_algorithm == "E-Greedy" and random.random() < epsilon:
+                    target = random.choice(neighbors)  # Explore new target
+                
+                if believer_algorithm == "UCB":
+                    if random.random() < misinformation_spread_prob:
                         target = max(neighbors, key=lambda n: len(list(G.neighbors(n))), default=target)
 
                 if random.random() < misinformation_spread_prob and target in agent_types["Neutral"]:
@@ -88,7 +91,8 @@ if node in agent_types["Believer"]:  # Believers applying selected strategy
                     node_colors[target] = "red"
                     reward_believer += 2
                     SSI[target] += misinformation_effect  # Increase stress for misinformation spread
-        elif node in agent_types["Skeptic"]:  # Skeptics applying selected strategy
+
+            elif node in agent_types["Skeptic"]:  # Skeptics applying selected strategy
                 if skep_strategies.get(node, "UCB") == "UCB":
                     if random.random() < fact_check_prob and target in agent_types["Believer"]:
                         agent_types["Skeptic"].add(target)
@@ -118,17 +122,22 @@ if node in agent_types["Believer"]:  # Believers applying selected strategy
                     agent_types["Skeptic"].remove(node)
                     agent_types["Neutral"].add(node)
                     node_colors[node] = "gray"     
+
+        # Track rewards and belief updates
         rewards["Believer"].append(reward_believer)
         rewards["Skeptic"].append(reward_skeptic)
-        
+
         belief_counts["Believers"].append(len(agent_types["Believer"]))
         belief_counts["Skeptics"].append(len(agent_types["Skeptic"]))
         belief_counts["Neutrals"].append(len(agent_types["Neutral"]))
         belief_counts["Influencers"].append(len(agent_types["Influencer"]))
-        
+        SSI_over_time.append(np.mean(list(SSI.values())))
+
+        # Update progress bar
         progress_bar.progress((t + 1) / steps)
         status_text.text(f"Simulation Step {t + 1}/{steps}")
-        if t % 10 == 0:
+
+        if t % 10 == 0:  # Update visualization every 10 steps
             fig, ax = plt.subplots(figsize=(12, 10))
             nx.draw(G, pos=network_pos, node_color=[node_colors[n] for n in G.nodes()], 
                     node_size=[100 + 300 * SSI[n] for n in G.nodes()], edge_color="lightgray", with_labels=False)
@@ -144,9 +153,13 @@ if node in agent_types["Believer"]:  # Believers applying selected strategy
             axs[1].set_title("Neutral Count Over Time")
             axs[1].legend()
 
-            axs[2].plot(range(len(SSI)), list(SSI.values()), label="SSI Over Time", color="black")
+            axs[2].plot(range(len(SSI_over_time)), SSI_over_time, label="SSI Over Time", color="black")
             axs[2].set_title("Social Stress Indicator (SSI) Over Time")
+            axs[2].set_xlabel("Time Steps")
+            axs[2].set_ylabel("SSI Value")
             axs[2].legend()
 
             graph_plot.pyplot(fig)
-st.success("Simulation Complete")
+
+    st.success("Simulation Complete")
+
