@@ -99,8 +99,8 @@ for node in G.nodes():
         node_sizes[node] = 300
 
 # Streamlit placeholders
-network_plot = st.empty()
-time_series_plot = st.empty()
+#network_plot = st.empty()
+#time_series_plot = st.empty()
 
 # Draw initial network visualization
 draw_network(G, node_colors, node_sizes, network_pos, network_plot)
