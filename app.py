@@ -50,7 +50,42 @@ for node in G.nodes():
     elif belief == "Influencer":
         node_colors[node] = "green"
         node_sizes[node] = 300
+# Function to draw the network
+def draw_network(G, node_colors, node_sizes, network_pos):
+    fig, ax = plt.subplots(figsize=(10, 7))
+    nx.draw(
+        G, pos=network_pos, ax=ax, node_color=[node_colors[node] for node in G.nodes()],
+        node_size=[node_sizes[node] for node in G.nodes()], edge_color='gray', alpha=0.5
+    )
+    plt.title("Network Visualization of Misinformation Dynamics")
+    st.pyplot(fig)
 
+# Streamlit app
+st.title("Misinformation Dynamic Network Visualization")
+
+# Create a Scale-Free Network
+N = 100  # Default number of agents
+G = nx.barabasi_albert_graph(N, 3)
+network_pos = nx.spring_layout(G)
+
+# Initialize agent properties
+belief_states = ["Believer", "Skeptic", "Neutral", "Influencer"]
+node_colors = {node: "gray" for node in G.nodes()}
+node_sizes = {node: 80 for node in G.nodes()}
+
+# Assign belief states
+for node in G.nodes():
+    belief = random.choices(belief_states, weights=[0.4, 0.3, 0.2, 0.1])[0]
+    if belief == "Believer":
+        node_colors[node] = "red"
+    elif belief == "Skeptic":
+        node_colors[node] = "blue"
+    elif belief == "Influencer":
+        node_colors[node] = "green"
+        node_sizes[node] = 300
+
+# Display the network
+draw_network(G, node_colors, node_sizes, network_pos)
 # Simulation button
 if st.sidebar.button("Start Simulation"):
     progress_bar = st.progress(0)
@@ -102,42 +137,7 @@ if st.sidebar.button("Start Simulation"):
 
         progress_bar.progress((t + 1) / steps)
         status_text.text(f"Simulation Step {t + 1}/{steps}")
-# Function to draw the network
-def draw_network(G, node_colors, node_sizes, network_pos):
-    fig, ax = plt.subplots(figsize=(10, 7))
-    nx.draw(
-        G, pos=network_pos, ax=ax, node_color=[node_colors[node] for node in G.nodes()],
-        node_size=[node_sizes[node] for node in G.nodes()], edge_color='gray', alpha=0.5
-    )
-    plt.title("Network Visualization of Misinformation Dynamics")
-    st.pyplot(fig)
 
-# Streamlit app
-st.title("Misinformation Dynamic Network Visualization")
-
-# Create a Scale-Free Network
-N = 100  # Default number of agents
-G = nx.barabasi_albert_graph(N, 3)
-network_pos = nx.spring_layout(G)
-
-# Initialize agent properties
-belief_states = ["Believer", "Skeptic", "Neutral", "Influencer"]
-node_colors = {node: "gray" for node in G.nodes()}
-node_sizes = {node: 80 for node in G.nodes()}
-
-# Assign belief states
-for node in G.nodes():
-    belief = random.choices(belief_states, weights=[0.4, 0.3, 0.2, 0.1])[0]
-    if belief == "Believer":
-        node_colors[node] = "red"
-    elif belief == "Skeptic":
-        node_colors[node] = "blue"
-    elif belief == "Influencer":
-        node_colors[node] = "green"
-        node_sizes[node] = 300
-
-# Display the network
-draw_network(G, node_colors, node_sizes, network_pos)
     # Convert log to DataFrame
     df = pd.DataFrame(data_log, columns=["Step", "Agent", "Belief", "SA", "SUB", "ISB", "SSI"])
     
