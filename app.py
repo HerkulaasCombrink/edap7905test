@@ -60,6 +60,21 @@ def draw_network(G, node_colors, node_sizes, network_pos):
     plt.title("Network Visualization of Misinformation Dynamics")
     st.pyplot(fig)
 
+# Function to plot time series graphs
+def plot_time_series(data_log):
+    df = pd.DataFrame(data_log, columns=["Step", "Believers", "Skeptics", "Neutrals", "Influencers"])
+    fig, ax = plt.subplots(figsize=(10, 5))
+    for col in ["Believers", "Skeptics", "Neutrals", "Influencers"]:
+        ax.plot(df["Step"], df[col], label=col)
+    ax.set_xlabel("Time Step")
+    ax.set_ylabel("Agent Count")
+    ax.set_title("Evolution of Agent Belief States Over Time")
+    ax.legend()
+    st.pyplot(fig)
+
+# Streamlit app
+st.title("Misinformation Dynamic Network Visualization")
+
 # Create a Scale-Free Network
 N = 100  # Default number of agents
 G = nx.barabasi_albert_graph(N, 3)
@@ -69,10 +84,12 @@ network_pos = nx.spring_layout(G)
 belief_states = ["Believer", "Skeptic", "Neutral", "Influencer"]
 node_colors = {node: "gray" for node in G.nodes()}
 node_sizes = {node: 80 for node in G.nodes()}
+agent_types = {"Believer": set(), "Skeptic": set(), "Neutral": set(), "Influencer": set()}
 
 # Assign belief states
 for node in G.nodes():
     belief = random.choices(belief_states, weights=[0.4, 0.3, 0.2, 0.1])[0]
+    agent_types[belief].add(node)
     if belief == "Believer":
         node_colors[node] = "red"
     elif belief == "Skeptic":
@@ -81,8 +98,48 @@ for node in G.nodes():
         node_colors[node] = "green"
         node_sizes[node] = 300
 
-# Display the network
+# Draw initial network visualization
 draw_network(G, node_colors, node_sizes, network_pos)
+
+# Run simulation
+steps = 100  # Number of time steps
+update_interval = 10  # Interval to update network visualization
+
+# Data log for time series plotting
+data_log = []
+
+for t in range(steps):
+    # Randomly change belief states to simulate adaptation
+    for node in G.nodes():
+        if random.random() < 0.05:
+            new_belief = random.choice(belief_states)
+            for b in belief_states:
+                agent_types[b].discard(node)
+            agent_types[new_belief].add(node)
+            if new_belief == "Believer":
+                node_colors[node] = "red"
+            elif new_belief == "Skeptic":
+                node_colors[node] = "blue"
+            elif new_belief == "Influencer":
+                node_colors[node] = "green"
+                node_sizes[node] = 300
+            else:
+                node_colors[node] = "gray"
+                node_sizes[node] = 80
+    
+    # Log data for time series graph
+    data_log.append([
+        t, len(agent_types["Believer"]), len(agent_types["Skeptic"]),
+        len(agent_types["Neutral"]), len(agent_types["Influencer"])
+    ])
+    
+    # Update visualization every update_interval steps
+    if t % update_interval == 0:
+        draw_network(G, node_colors, node_sizes, network_pos)
+        time.sleep(0.5)
+
+# Display time series graph
+plot_time_series(data_log)
 # Simulation button
 if st.sidebar.button("Start Simulation"):
     progress_bar = st.progress(0)
