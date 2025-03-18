@@ -60,6 +60,16 @@ def draw_network(G, node_colors, node_sizes, network_pos):
     plt.title("Network Visualization of Misinformation Dynamics")
     st.pyplot(fig)
 
+# Function to draw the network
+def draw_network(G, node_colors, node_sizes, network_pos, plot_area):
+    fig, ax = plt.subplots(figsize=(10, 7))
+    nx.draw(
+        G, pos=network_pos, ax=ax, node_color=[node_colors[node] for node in G.nodes()],
+        node_size=[node_sizes[node] for node in G.nodes()], edge_color='gray', alpha=0.5
+    )
+    plt.title("Network Visualization of Misinformation Dynamics")
+    plot_area.pyplot(fig)
+
 # Function to plot time series graphs
 def plot_time_series(data_log):
     df = pd.DataFrame(data_log, columns=["Step", "Believers", "Skeptics", "Neutrals", "Influencers"])
@@ -98,8 +108,11 @@ for node in G.nodes():
         node_colors[node] = "green"
         node_sizes[node] = 300
 
+# Streamlit placeholders
+network_plot = st.empty()
+
 # Draw initial network visualization
-draw_network(G, node_colors, node_sizes, network_pos)
+draw_network(G, node_colors, node_sizes, network_pos, network_plot)
 
 # Run simulation
 steps = 100  # Number of time steps
@@ -135,7 +148,7 @@ for t in range(steps):
     
     # Update visualization every update_interval steps
     if t % update_interval == 0:
-        draw_network(G, node_colors, node_sizes, network_pos)
+        draw_network(G, node_colors, node_sizes, network_pos, network_plot)
         time.sleep(0.5)
 
 # Display time series graph
