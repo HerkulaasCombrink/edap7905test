@@ -102,13 +102,6 @@ if st.sidebar.button("Start Simulation"):
 
         progress_bar.progress((t + 1) / steps)
         status_text.text(f"Simulation Step {t + 1}/{steps}")
-
-    # Convert log to DataFrame
-    df = pd.DataFrame(data_log, columns=["Step", "Agent", "Belief", "SA", "SUB", "ISB", "SSI"])
-    
-    # Allow CSV download
-    csv = df.to_csv(index=False).encode('utf-8')
-    st.download_button("Download Simulation Data", csv, "simulation_data.csv", "text/csv")
 # Function to draw the network
 def draw_network(G, node_colors, node_sizes, network_pos):
     fig, ax = plt.subplots(figsize=(10, 7))
@@ -145,4 +138,11 @@ for node in G.nodes():
 
 # Display the network
 draw_network(G, node_colors, node_sizes, network_pos)
+    # Convert log to DataFrame
+    df = pd.DataFrame(data_log, columns=["Step", "Agent", "Belief", "SA", "SUB", "ISB", "SSI"])
+    
+    # Allow CSV download
+    csv = df.to_csv(index=False).encode('utf-8')
+    st.download_button("Download Simulation Data", csv, "simulation_data.csv", "text/csv")
+
     st.success("Simulation Complete")
