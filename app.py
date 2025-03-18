@@ -60,9 +60,6 @@ def draw_network(G, node_colors, node_sizes, network_pos):
     plt.title("Network Visualization of Misinformation Dynamics")
     st.pyplot(fig)
 
-# Streamlit app
-st.title("Misinformation Dynamic Network Visualization")
-
 # Create a Scale-Free Network
 N = 100  # Default number of agents
 G = nx.barabasi_albert_graph(N, 3)
