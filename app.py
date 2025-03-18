@@ -147,11 +147,11 @@ for t in range(steps):
 plot_time_series(data_log, time_series_plot)
 
 # Run simulation
-steps = 100  # Number of time steps
-update_interval = 10  # Interval to update network visualization
+#steps = 100  # Number of time steps
+#update_interval = 10  # Interval to update network visualization
 
 # Data log for time series plotting
-data_log = []
+#data_log = []
 
 for t in range(steps):
     # Randomly change belief states to simulate adaptation
