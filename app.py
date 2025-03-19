@@ -59,73 +59,62 @@ if st.sidebar.button("Start Simulation"):
     skep_strategies = {}
     agent_types = {"Believer": set(), "Skeptic": set(), "Neutral": set(), "Influencer": set()}
     agent_microblogs = {node: [] for node in G.nodes()}
-        # UCB parameters
+
+    # **Move UCB Initialization Inside the Button Block**
     ucb_counts = {node: 1 for node in G.nodes()}  # Count of times each node has been influenced
     ucb_values = {node: 0 for node in G.nodes()}  # UCB estimated values
-    # Assign belief states
-    for node in G.nodes():
-        belief = random.choices(belief_states, weights=[0.4, 0.3, 0.2, 0.1])[0]
-        agent_types[belief].add(node)
-        if belief == "Skeptic":
-            skep_strategies[node] = "UCB"
-        elif belief == "Believer":
-            skep_strategies[node] = "E-Greedy"
-        elif belief == "Influencer":
-            node_colors[node] = "green"
-            node_sizes[node] = 300
-    
-    # Streamlit placeholders
+
+    # Draw initial network visualization
     network_plot = st.empty()
     time_series_plot = st.empty()
     progress_bar = st.progress(0)
     status_text = st.empty()
-    
-    # Draw initial network visualization
     draw_network(G, node_colors, node_sizes, network_pos, network_plot)
-    
+
     # Data log for time series plotting
     data_log = []
-    
 
+    for t in range(steps):
+        for node in G.nodes():
+            if node in agent_types["Influencer"] or node in agent_types["Believer"] or node in agent_types["Skeptic"]:
+                neighbors = list(G.neighbors(node))
+                if not neighbors:
+                    continue
 
-for node in G.nodes():
-    if node in agent_types["Influencer"] or node in agent_types["Believer"] or node in agent_types["Skeptic"]:
-        neighbors = list(G.neighbors(node))
-        if not neighbors:
-            continue
+                # Apply UCB to select a neighbor to influence
+                ucb_scores = {n: ucb_values[n] + np.sqrt(2 * np.log(sum(ucb_counts.values())) / ucb_counts[n]) for n in neighbors}
+                target = max(ucb_scores, key=ucb_scores.get)  # Select neighbor with highest UCB score
+                
+                # Determine belief transition
+                if node in agent_types["Believer"] and target in agent_types["Neutral"]:
+                    agent_types["Believer"].add(target)
+                    agent_types["Neutral"].remove(target)
+                    node_colors[target] = "red"
+                elif node in agent_types["Skeptic"] and target in agent_types["Believer"]:
+                    agent_types["Skeptic"].add(target)
+                    agent_types["Believer"].remove(target)
+                    node_colors[target] = "blue"
 
-        # Apply UCB to select a neighbor to influence
-        ucb_scores = {n: ucb_values[n] + np.sqrt(2 * np.log(sum(ucb_counts.values())) / ucb_counts[n]) for n in neighbors}
-        target = max(ucb_scores, key=ucb_scores.get)  # Select neighbor with highest UCB score
-        
-        # Determine belief transition
-        if node in agent_types["Believer"] and target in agent_types["Neutral"]:
-            agent_types["Believer"].add(target)
-            agent_types["Neutral"].remove(target)
-            node_colors[target] = "red"
-        elif node in agent_types["Skeptic"] and target in agent_types["Believer"]:
-            agent_types["Skeptic"].add(target)
-            agent_types["Believer"].remove(target)
-            node_colors[target] = "blue"
+                # Update UCB values
+                reward = 1 if target in agent_types["Believer"] else 0  # Reward when a neutral becomes a believer
+                ucb_values[target] = (ucb_values[target] * ucb_counts[target] + reward) / (ucb_counts[target] + 1)
+                ucb_counts[target] += 1
 
-        # Update UCB values
-        reward = 1 if target in agent_types["Believer"] else 0  # Reward when a neutral becomes a believer
-        ucb_values[target] = (ucb_values[target] * ucb_counts[target] + reward) / (ucb_counts[target] + 1)
-        ucb_counts[target] += 1
-        
         # Log data for time series graph
         data_log.append([
             t, len(agent_types["Believer"]), len(agent_types["Skeptic"]),
             len(agent_types["Neutral"]), len(agent_types["Influencer"])
         ])
-        
+
         # Update visualization every update_interval steps
         if t % 10 == 0:
             draw_network(G, node_colors, node_sizes, network_pos, network_plot)
             plot_time_series(data_log, time_series_plot)
             time.sleep(0.5)
-        
+
         progress_bar.progress((t + 1) / steps)
         status_text.text(f"Simulation Step {t + 1}/{steps}")
+
+    st.success("Simulation Complete")
     
     st.success("Simulation Complete")
