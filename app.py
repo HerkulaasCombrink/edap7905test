@@ -84,23 +84,34 @@ if st.sidebar.button("Start Simulation"):
     # Data log for time series plotting
     data_log = []
     
-    for t in range(steps):
-        for node in G.nodes():
-            if random.random() < 0.05:
-                new_belief = random.choice(belief_states)
-                for b in belief_states:
-                    agent_types[b].discard(node)
-                agent_types[new_belief].add(node)
-                if new_belief == "Believer":
-                    node_colors[node] = "red"
-                elif new_belief == "Skeptic":
-                    node_colors[node] = "blue"
-                elif new_belief == "Influencer":
-                    node_colors[node] = "green"
-                    node_sizes[node] = 300
-                else:
-                    node_colors[node] = "gray"
-                    node_sizes[node] = 80
+    # UCB parameters
+ucb_counts = {node: 1 for node in G.nodes()}  # Count of times each node has been influenced
+ucb_values = {node: 0 for node in G.nodes()}  # UCB estimated values
+
+for node in G.nodes():
+    if node in agent_types["Influencer"] or node in agent_types["Believer"] or node in agent_types["Skeptic"]:
+        neighbors = list(G.neighbors(node))
+        if not neighbors:
+            continue
+
+        # Apply UCB to select a neighbor to influence
+        ucb_scores = {n: ucb_values[n] + np.sqrt(2 * np.log(sum(ucb_counts.values())) / ucb_counts[n]) for n in neighbors}
+        target = max(ucb_scores, key=ucb_scores.get)  # Select neighbor with highest UCB score
+        
+        # Determine belief transition
+        if node in agent_types["Believer"] and target in agent_types["Neutral"]:
+            agent_types["Believer"].add(target)
+            agent_types["Neutral"].remove(target)
+            node_colors[target] = "red"
+        elif node in agent_types["Skeptic"] and target in agent_types["Believer"]:
+            agent_types["Skeptic"].add(target)
+            agent_types["Believer"].remove(target)
+            node_colors[target] = "blue"
+
+        # Update UCB values
+        reward = 1 if target in agent_types["Believer"] else 0  # Reward when a neutral becomes a believer
+        ucb_values[target] = (ucb_values[target] * ucb_counts[target] + reward) / (ucb_counts[target] + 1)
+        ucb_counts[target] += 1
         
         # Log data for time series graph
         data_log.append([
