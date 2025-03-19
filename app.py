@@ -89,8 +89,99 @@ if st.sidebar.button("Start Simulation"):
             network_plot.empty()
             time_series_plot.empty()
             time.sleep(0.5)
+    # Function to draw the network
+def draw_network(G, node_colors, node_sizes, network_pos, plot_area):
+    fig, ax = plt.subplots(figsize=(10, 7))
+    nx.draw(
+        G, pos=network_pos, ax=ax, node_color=[node_colors[node] for node in G.nodes()],
+        node_size=[node_sizes[node] for node in G.nodes()], edge_color='gray', alpha=0.5
+    )
+    plt.title("Network Visualization of Misinformation Dynamics")
+    plot_area.pyplot(fig)
+
+# Function to plot time series graphs
+def plot_time_series(data_log, plot_area):
+    df = pd.DataFrame(data_log, columns=["Step", "Believers", "Skeptics", "Neutrals", "Influencers"])
+    fig, ax = plt.subplots(figsize=(10, 5))
+    for col in ["Believers", "Skeptics", "Neutrals", "Influencers"]:
+        ax.plot(df["Step"], df[col], label=col)
+    ax.set_xlabel("Time Step")
+    ax.set_ylabel("Agent Count")
+    ax.set_title("Evolution of Agent Belief States Over Time")
+    ax.legend()
+    plot_area.pyplot(fig)
+
+# Simulation button
+if st.sidebar.button("Start Simulation"):
+    # Create a Scale-Free Network
+    G = nx.barabasi_albert_graph(N, 3)
+    network_pos = nx.spring_layout(G)
+    SSI = {node: random.uniform(0.1, 0.5) for node in G.nodes()}
+    
+    # Initialize agent properties
+    belief_states = ["Believer", "Skeptic", "Neutral", "Influencer"]
+    node_colors = {node: "gray" for node in G.nodes()}
+    node_sizes = {node: 80 for node in G.nodes()}
+    skep_strategies = {}
+    agent_types = {"Believer": set(), "Skeptic": set(), "Neutral": set(), "Influencer": set()}
+    agent_microblogs = {node: [] for node in G.nodes()}
+    
+    # Assign belief states
+    for node in G.nodes():
+        belief = random.choices(belief_states, weights=[0.4, 0.3, 0.2, 0.1])[0]
+        agent_types[belief].add(node)
+        if belief == "Skeptic":
+            skep_strategies[node] = "UCB"
+        elif belief == "Believer":
+            skep_strategies[node] = "E-Greedy"
+        elif belief == "Influencer":
+            node_colors[node] = "green"
+            node_sizes[node] = 300
+    
+    # Streamlit placeholders
+    network_plot = st.empty()
+    time_series_plot = st.empty()
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    
+    # Draw initial network visualization
+    draw_network(G, node_colors, node_sizes, network_pos, network_plot)
+    
+    # Data log for time series plotting
+    data_log = []
+    
+    for t in range(steps):
+        for node in G.nodes():
+            if random.random() < 0.05:
+                new_belief = random.choice(belief_states)
+                for b in belief_states:
+                    agent_types[b].discard(node)
+                agent_types[new_belief].add(node)
+                if new_belief == "Believer":
+                    node_colors[node] = "red"
+                elif new_belief == "Skeptic":
+                    node_colors[node] = "blue"
+                elif new_belief == "Influencer":
+                    node_colors[node] = "green"
+                    node_sizes[node] = 300
+                else:
+                    node_colors[node] = "gray"
+                    node_sizes[node] = 80
+        
+        # Log data for time series graph
+        data_log.append([
+            t, len(agent_types["Believer"]), len(agent_types["Skeptic"]),
+            len(agent_types["Neutral"]), len(agent_types["Influencer"])
+        ])
+        
+        # Update visualization every update_interval steps
+        if t % 10 == 0:
+            draw_network(G, node_colors, node_sizes, network_pos, network_plot)
+            plot_time_series(data_log, time_series_plot)
+            time.sleep(0.5)
         
         progress_bar.progress((t + 1) / steps)
         status_text.text(f"Simulation Step {t + 1}/{steps}")
     
+      
     st.success("Simulation Complete")
