@@ -59,7 +59,9 @@ if st.sidebar.button("Start Simulation"):
     skep_strategies = {}
     agent_types = {"Believer": set(), "Skeptic": set(), "Neutral": set(), "Influencer": set()}
     agent_microblogs = {node: [] for node in G.nodes()}
-    
+        # UCB parameters
+    ucb_counts = {node: 1 for node in G.nodes()}  # Count of times each node has been influenced
+    ucb_values = {node: 0 for node in G.nodes()}  # UCB estimated values
     # Assign belief states
     for node in G.nodes():
         belief = random.choices(belief_states, weights=[0.4, 0.3, 0.2, 0.1])[0]
@@ -84,9 +86,7 @@ if st.sidebar.button("Start Simulation"):
     # Data log for time series plotting
     data_log = []
     
-    # UCB parameters
-ucb_counts = {node: 1 for node in G.nodes()}  # Count of times each node has been influenced
-ucb_values = {node: 0 for node in G.nodes()}  # UCB estimated values
+
 
 for node in G.nodes():
     if node in agent_types["Influencer"] or node in agent_types["Believer"] or node in agent_types["Skeptic"]:
