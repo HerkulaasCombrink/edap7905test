@@ -23,7 +23,27 @@ alpha = st.sidebar.slider("Stress Propagation Factor (α)", min_value=0.0, max_v
 beta = st.sidebar.slider("Fact-Check Impact (β)", min_value=0.0, max_value=1.0, value=0.1, step=0.05)
 gamma = st.sidebar.slider("Misinformation Impact (γ)", min_value=0.0, max_value=1.0, value=0.2, step=0.05)
 lambda_factor = st.sidebar.slider("Network Effect Factor (λ)", min_value=1.0, max_value=10.0, value=3.0, step=0.5)
+# Function to draw the network
+def draw_network(G, node_colors, node_sizes, network_pos, plot_area):
+    fig, ax = plt.subplots(figsize=(10, 7))
+    nx.draw(
+        G, pos=network_pos, ax=ax, node_color=[node_colors[node] for node in G.nodes()],
+        node_size=[node_sizes[node] for node in G.nodes()], edge_color='gray', alpha=0.5
+    )
+    plt.title("Network Visualization of Misinformation Dynamics")
+    plot_area.pyplot(fig)
 
+# Function to plot time series graphs
+def plot_time_series(data_log, plot_area):
+    df = pd.DataFrame(data_log, columns=["Step", "Believers", "Skeptics", "Neutrals", "Influencers"])
+    fig, ax = plt.subplots(figsize=(10, 5))
+    for col in ["Believers", "Skeptics", "Neutrals", "Influencers"]:
+        ax.plot(df["Step"], df[col], label=col)
+    ax.set_xlabel("Time Step")
+    ax.set_ylabel("Agent Count")
+    ax.set_title("Evolution of Agent Belief States Over Time")
+    ax.legend()
+    plot_area.pyplot(fig)
 # Simulation button
 if st.sidebar.button("Start Simulation"):
     # Create a Scale-Free Network
