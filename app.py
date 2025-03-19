@@ -124,19 +124,19 @@ if st.sidebar.button("Start Simulation"):
         target = max(ucb_scores, key=ucb_scores.get)  # Select neighbor with highest UCB score
                 
                 # Determine belief transition
-                if node in agent_types["Believer"] and target in agent_types["Neutral"]:
-                    agent_types["Believer"].add(target)
-                    agent_types["Neutral"].remove(target)
-                    node_colors[target] = "red"
-                elif node in agent_types["Skeptic"] and target in agent_types["Believer"]:
-                    agent_types["Skeptic"].add(target)
-                    agent_types["Believer"].remove(target)
-                    node_colors[target] = "blue"
+        if node in agent_types["Believer"] and target in agent_types["Neutral"]:
+                agent_types["Believer"].add(target)
+                agent_types["Neutral"].remove(target)
+                node_colors[target] = "red"
+        elif node in agent_types["Skeptic"] and target in agent_types["Believer"]:
+                agent_types["Skeptic"].add(target)
+                agent_types["Believer"].remove(target)
+                node_colors[target] = "blue"
 
                 # Update UCB values
-                reward = 1 if target in agent_types["Believer"] else 0  # Reward when a neutral becomes a believer
-                ucb_values[target] = (ucb_values[target] * ucb_counts[target] + reward) / (ucb_counts[target] + 1)
-                ucb_counts[target] += 1
+        reward = 1 if target in agent_types["Believer"] else 0  # Reward when a neutral becomes a believer
+        ucb_values[target] = (ucb_values[target] * ucb_counts[target] + reward) / (ucb_counts[target] + 1)
+        ucb_counts[target] += 1
 
         # Log data for time series graph
         data_log.append([
