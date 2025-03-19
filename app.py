@@ -76,11 +76,12 @@ if st.sidebar.button("Start Simulation"):
 
     for t in range(steps):
         for node in list(G.nodes()):  # Ensure we iterate over a copy to modify the structure safely
-            if node in agent_types["Influencer"] or node in agent_types["Believer"] or node in agent_types["Skeptic"]:
-                neighbors = list(G.neighbors(node))
+            neighbors = list(G.neighbors(node))  # Always define it before using it
             if not neighbors:
                 continue
-
+            if node in agent_types["Influencer"] or node in agent_types["Believer"] or node in agent_types["Skeptic"]:
+                neighbors = list(G.neighbors(node))
+    
         # Apply UCB to select a neighbor to influence
             ucb_scores = {n: ucb_values[n] + np.sqrt(2 * np.log(sum(ucb_counts.values())) / ucb_counts[n]) for n in neighbors}
             target = max(ucb_scores, key=ucb_scores.get)  # Select neighbor with highest UCB score
