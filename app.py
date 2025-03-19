@@ -76,35 +76,35 @@ if st.sidebar.button("Start Simulation"):
 
     for t in range(steps):
         for node in list(G.nodes()):  # Ensure we iterate over a copy to modify the structure safely
-    if node in agent_types["Influencer"] or node in agent_types["Believer"] or node in agent_types["Skeptic"]:
-        neighbors = list(G.neighbors(node))
-        if not neighbors:
-            continue
+            if node in agent_types["Influencer"] or node in agent_types["Believer"] or node in agent_types["Skeptic"]:
+                neighbors = list(G.neighbors(node))
+            if not neighbors:
+                continue
 
         # Apply UCB to select a neighbor to influence
-        ucb_scores = {n: ucb_values[n] + np.sqrt(2 * np.log(sum(ucb_counts.values())) / ucb_counts[n]) for n in neighbors}
-        target = max(ucb_scores, key=ucb_scores.get)  # Select neighbor with highest UCB score
+            ucb_scores = {n: ucb_values[n] + np.sqrt(2 * np.log(sum(ucb_counts.values())) / ucb_counts[n]) for n in neighbors}
+            target = max(ucb_scores, key=ucb_scores.get)  # Select neighbor with highest UCB score
         
         # **Updated: Ensure Proper Belief Transition**
-        if target in agent_types["Neutral"]:
-            if node in agent_types["Believer"]:
-                agent_types["Believer"].add(target)
-                agent_types["Neutral"].remove(target)
-                node_colors[target] = "red"
-            elif node in agent_types["Skeptic"]:
-                agent_types["Skeptic"].add(target)
-                agent_types["Neutral"].remove(target)
-                node_colors[target] = "blue"
+            if target in agent_types["Neutral"]:
+                if node in agent_types["Believer"]:
+                    agent_types["Believer"].add(target)
+                    agent_types["Neutral"].remove(target)
+                    node_colors[target] = "red"
+                elif node in agent_types["Skeptic"]:
+                    agent_types["Skeptic"].add(target)
+                    agent_types["Neutral"].remove(target)
+                    node_colors[target] = "blue"
         
-        elif target in agent_types["Believer"] and node in agent_types["Skeptic"]:
-            agent_types["Skeptic"].add(target)
-            agent_types["Believer"].remove(target)
-            node_colors[target] = "blue"
+                elif target in agent_types["Believer"] and node in agent_types["Skeptic"]:
+                    agent_types["Skeptic"].add(target)
+                    agent_types["Believer"].remove(target)
+                    node_colors[target] = "blue"
 
-        elif target in agent_types["Skeptic"] and node in agent_types["Believer"]:
-            agent_types["Believer"].add(target)
-            agent_types["Skeptic"].remove(target)
-            node_colors[target] = "red"
+                elif target in agent_types["Skeptic"] and node in agent_types["Believer"]:
+                    agent_types["Believer"].add(target)
+                    agent_types["Skeptic"].remove(target)
+                    node_colors[target] = "red"
 
         # **Ensure influencers can impact multiple nodes**
         if node in agent_types["Influencer"]:
