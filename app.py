@@ -9,7 +9,37 @@ import time
 # Streamlit UI setup
 st.title("Misinformation Dynamic Network Simulation")
 st.sidebar.header("Simulation Parameters")
+# Assign Initial Agent States
+num_believers = max(1, int(0.2 * N))   # 20% of nodes start as Believers
+num_skeptics = max(1, int(0.2 * N))    # 20% of nodes start as Skeptics
+num_influencers = max(1, int(0.05 * N)) # 5% of nodes are Influencers
+num_neutrals = N - (num_believers + num_skeptics + num_influencers)  # Rest are Neutrals
 
+all_nodes = list(G.nodes())
+random.shuffle(all_nodes)  # Shuffle to ensure random assignment
+
+# Assign agents
+believers = set(all_nodes[:num_believers])
+skeptics = set(all_nodes[num_believers:num_believers + num_skeptics])
+influencers = set(all_nodes[num_believers + num_skeptics:num_believers + num_skeptics + num_influencers])
+neutrals = set(all_nodes[num_believers + num_skeptics + num_influencers:])
+
+# Apply the assignments to agent_types
+agent_types["Believer"] = believers
+agent_types["Skeptic"] = skeptics
+agent_types["Influencer"] = influencers
+agent_types["Neutral"] = neutrals
+
+# Assign colors based on agent types
+for node in believers:
+    node_colors[node] = "red"
+for node in skeptics:
+    node_colors[node] = "blue"
+for node in influencers:
+    node_colors[node] = "green"
+    node_sizes[node] = 300
+for node in neutrals:
+    node_colors[node] = "gray"
 # Customizable parameters
 N = st.sidebar.slider("Number of Agents", min_value=50, max_value=500, value=100, step=10)
 misinformation_spread_prob = st.sidebar.slider("Misinformation Spread Probability", min_value=0.0, max_value=1.0, value=0.3, step=0.05)
