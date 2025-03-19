@@ -120,8 +120,8 @@ if st.sidebar.button("Start Simulation"):
         ucb_counts[target] += 1
 
                 # Apply UCB to select a neighbor to influence
-                ucb_scores = {n: ucb_values[n] + np.sqrt(2 * np.log(sum(ucb_counts.values())) / ucb_counts[n]) for n in neighbors}
-                target = max(ucb_scores, key=ucb_scores.get)  # Select neighbor with highest UCB score
+        ucb_scores = {n: ucb_values[n] + np.sqrt(2 * np.log(sum(ucb_counts.values())) / ucb_counts[n]) for n in neighbors}
+        target = max(ucb_scores, key=ucb_scores.get)  # Select neighbor with highest UCB score
                 
                 # Determine belief transition
                 if node in agent_types["Believer"] and target in agent_types["Neutral"]:
