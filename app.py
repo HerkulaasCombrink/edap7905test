@@ -38,11 +38,14 @@ def plot_time_series(data_log, plot_area):
     df = pd.DataFrame(data_log, columns=["Step", "Believers", "Skeptics", "Neutrals", "Influencers"])
     fig, ax = plt.subplots(figsize=(10, 5))
     for col in ["Believers", "Skeptics", "Neutrals", "Influencers"]:
-        ax.plot(df["Step"], df[col], label=col)
+        mean_series = df[col]
+        ci = 1.96 * mean_series.std() / np.sqrt(len(mean_series))  # 95% confidence interval
+        ax.plot(df["Step"], mean_series, label=col, linewidth=1)
+        ax.fill_between(df["Step"], mean_series - ci, mean_series + ci, alpha=0.2)
     ax.set_xlabel("Time Step")
     ax.set_ylabel("Agent Count")
     ax.set_title("Evolution of Agent Belief States Over Time")
-    ax.legend()
+    ax.legend(loc="upper right", bbox_to_anchor=(1.15, 1))  # Fix legend position
     plot_area.pyplot(fig)
 # Simulation button
 if st.sidebar.button("Start Simulation"):
