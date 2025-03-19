@@ -9,37 +9,7 @@ import time
 # Streamlit UI setup
 st.title("Misinformation Dynamic Network Simulation")
 st.sidebar.header("Simulation Parameters")
-# Assign Initial Agent States
-num_believers = max(1, int(0.2 * N))   # 20% of nodes start as Believers
-num_skeptics = max(1, int(0.2 * N))    # 20% of nodes start as Skeptics
-num_influencers = max(1, int(0.05 * N)) # 5% of nodes are Influencers
-num_neutrals = N - (num_believers + num_skeptics + num_influencers)  # Rest are Neutrals
 
-all_nodes = list(G.nodes())
-random.shuffle(all_nodes)  # Shuffle to ensure random assignment
-
-# Assign agents
-believers = set(all_nodes[:num_believers])
-skeptics = set(all_nodes[num_believers:num_believers + num_skeptics])
-influencers = set(all_nodes[num_believers + num_skeptics:num_believers + num_skeptics + num_influencers])
-neutrals = set(all_nodes[num_believers + num_skeptics + num_influencers:])
-
-# Apply the assignments to agent_types
-agent_types["Believer"] = believers
-agent_types["Skeptic"] = skeptics
-agent_types["Influencer"] = influencers
-agent_types["Neutral"] = neutrals
-
-# Assign colors based on agent types
-for node in believers:
-    node_colors[node] = "red"
-for node in skeptics:
-    node_colors[node] = "blue"
-for node in influencers:
-    node_colors[node] = "green"
-    node_sizes[node] = 300
-for node in neutrals:
-    node_colors[node] = "gray"
 # Customizable parameters
 N = st.sidebar.slider("Number of Agents", min_value=50, max_value=500, value=100, step=10)
 misinformation_spread_prob = st.sidebar.slider("Misinformation Spread Probability", min_value=0.0, max_value=1.0, value=0.3, step=0.05)
@@ -81,7 +51,7 @@ if st.sidebar.button("Start Simulation"):
     G = nx.barabasi_albert_graph(N, 3)
     network_pos = nx.spring_layout(G)
     SSI = {node: random.uniform(0.1, 0.5) for node in G.nodes()}
-    
+
     # Initialize agent properties
     belief_states = ["Believer", "Skeptic", "Neutral", "Influencer"]
     node_colors = {node: "gray" for node in G.nodes()}
@@ -90,15 +60,45 @@ if st.sidebar.button("Start Simulation"):
     agent_types = {"Believer": set(), "Skeptic": set(), "Neutral": set(), "Influencer": set()}
     agent_microblogs = {node: [] for node in G.nodes()}
 
-    # **Move UCB Initialization Inside the Button Block**
-    ucb_counts = {node: 1 for node in G.nodes()}  # Count of times each node has been influenced
-    ucb_values = {node: 0 for node in G.nodes()}  # UCB estimated values
+    # **Move Initial Agent Assignment Here**
+    num_believers = max(1, int(0.2 * N))   # 20% believers
+    num_skeptics = max(1, int(0.2 * N))    # 20% skeptics
+    num_influencers = max(1, int(0.05 * N)) # 5% influencers
+    num_neutrals = N - (num_believers + num_skeptics + num_influencers)  # Remaining are neutrals
 
-    # Draw initial network visualization
+    all_nodes = list(G.nodes())
+    random.shuffle(all_nodes)  # Shuffle to ensure randomness
+
+    # Assign agent types
+    believers = set(all_nodes[:num_believers])
+    skeptics = set(all_nodes[num_believers:num_believers + num_skeptics])
+    influencers = set(all_nodes[num_believers + num_skeptics:num_believers + num_skeptics + num_influencers])
+    neutrals = set(all_nodes[num_believers + num_skeptics + num_influencers:])
+
+    # Apply assignments
+    agent_types["Believer"] = believers
+    agent_types["Skeptic"] = skeptics
+    agent_types["Influencer"] = influencers
+    agent_types["Neutral"] = neutrals
+
+    # Assign colors
+    for node in believers:
+        node_colors[node] = "red"
+    for node in skeptics:
+        node_colors[node] = "blue"
+    for node in influencers:
+        node_colors[node] = "green"
+        node_sizes[node] = 300
+    for node in neutrals:
+        node_colors[node] = "gray"
+
+    # Streamlit placeholders
     network_plot = st.empty()
     time_series_plot = st.empty()
     progress_bar = st.progress(0)
     status_text = st.empty()
+    
+    # Draw initial network visualization
     draw_network(G, node_colors, node_sizes, network_pos, network_plot)
 
     # Data log for time series plotting
