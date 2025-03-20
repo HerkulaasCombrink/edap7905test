@@ -117,7 +117,8 @@ if st.sidebar.button("Start Simulation"):
 
             # Allow multiple influence attempts per step
                 for _ in range(random.randint(1, 3)):  # Agents can attempt influence 1-3 times per step
-                    ucb_scores = {}
+                    ucb_scores = {n: ucb_values[n] + exploration_factor * np.sqrt(np.log(sum(ucb_counts.values()) + 1) / ucb_counts[n]) + penalty for n in neighbors}
+                    target = max(ucb_scores, key=ucb_scores.get)  # Select best neighbor to influence
                     for n in neighbors:
                         if ucb_counts[n] == 0:  # Prevent division by zero
                             ucb_counts[n] = 1
@@ -136,7 +137,7 @@ if st.sidebar.button("Start Simulation"):
                         agent_types["Neutral"].remove(target)
                         node_colors[target] = "blue"
 
-                # **Influencer-Specific Influence Spread**
+                # Influence multiple nodes if influencer
                 if node in agent_types["Influencer"]:
                     for neighbor in neighbors:
                         if neighbor in agent_types["Neutral"]:
@@ -144,8 +145,8 @@ if st.sidebar.button("Start Simulation"):
                             agent_types["Neutral"].remove(neighbor)
                             node_colors[neighbor] = "red"
 
-                # **UCB Value Update**
-                reward = 1 if target in agent_types["Believer"] else -0.2  # Negative reward for poor selection
+                # UCB update
+                reward = 1 if target in agent_types["Believer"] else -0.2  # Give negative reward if no influence
                 ucb_values[target] = ((ucb_values[target] * ucb_counts[target]) + reward) / (ucb_counts[target] + 1)
                 ucb_counts[target] += 1  # Increase count after update
 
