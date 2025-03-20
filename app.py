@@ -154,7 +154,7 @@ if st.sidebar.button("Start Simulation"):
             node_colors[target] = "red"
             skeptic_duration[target] = 0  # Reset
 
-            elif node in agent_types["Skeptic"] and target in agent_types["Believer"]:
+        elif node in agent_types["Skeptic"] and target in agent_types["Believer"]:
                 if random.random() < base_conversion_prob * (1 + skeptic_resistance_factor):
                     agent_types["Skeptic"].add(target)
                     agent_types["Believer"].remove(target)
