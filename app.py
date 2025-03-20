@@ -230,9 +230,9 @@ if len(agent_types["Neutral"]) > 0:
     continue  # Prevent early stopping
 
                 # UCB update
-        reward = 1 if target in agent_types["Believer"] else -0.2  # Give negative reward if no influence
-        ucb_values[target] = ((ucb_values[target] * ucb_counts[target]) + reward) / (ucb_counts[target] + 1)
-        ucb_counts[target] += 1  # Increase count after update
+    reward = 1 if target in agent_types["Believer"] else -0.2  # Give negative reward if no influence
+    ucb_values[target] = ((ucb_values[target] * ucb_counts[target]) + reward) / (ucb_counts[target] + 1)
+    ucb_counts[target] += 1  # Increase count after update
 
             if node in agent_types["Believer"] or node in agent_types["Skeptic"] or node in agent_types["Influencer"]:
             # UCB scoring for influence choice
