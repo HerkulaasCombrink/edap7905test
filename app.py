@@ -110,8 +110,44 @@ if st.sidebar.button("Start Simulation"):
 
     for t in range(steps):
         for node in list(G.nodes()):  # Iterate over all nodes
+            neighbors = list(G.neighbors(node))  # Ensure neighbors is always defined
+            if not neighbors:
+                continue  # Skip iteration if no neighbors
+
             if node in agent_types["Believer"] or node in agent_types["Skeptic"] or node in agent_types["Influencer"]:
-                neighbors = list(G.neighbors(node))  # Get node's neighbors
+            # UCB scoring for influence choice
+                ucb_scores = {}
+                for n in neighbors:
+                    if ucb_counts[n] == 0:  # Prevent division by zero
+                        ucb_counts[n] = 1
+                    ucb_scores[n] = ucb_values[n] + np.sqrt(2 * np.log(sum(ucb_counts.values())) / ucb_counts[n])
+
+            # Select best neighbor to influence
+                target = max(ucb_scores, key=ucb_scores.get)
+
+            # **Influence Logic**
+                if target in agent_types["Neutral"]:
+                    if node in agent_types["Believer"]:
+                        agent_types["Believer"].add(target)
+                        agent_types["Neutral"].remove(target)
+                        node_colors[target] = "red"
+                    elif node in agent_types["Skeptic"]:
+                        agent_types["Skeptic"].add(target)
+                        agent_types["Neutral"].remove(target)
+                        node_colors[target] = "blue"
+
+            # **Influencer Impacts Multiple Nodes**
+                if node in agent_types["Influencer"]:
+                    for neighbor in neighbors:
+                        if neighbor in agent_types["Neutral"]:
+                            agent_types["Believer"].add(neighbor)
+                            agent_types["Neutral"].remove(neighbor)
+                            node_colors[neighbor] = "red"
+
+            # **UCB Update**
+                reward = 1 if target in agent_types["Believer"] else 0  # Reward when a neutral becomes a believer
+                ucb_values[target] = ((ucb_values[target] * ucb_counts[target]) + reward) / (ucb_counts[target] + 1)
+                ucb_counts[target] += 1  # Increase count after update
             
                 if not neighbors:
                     continue  # Skip if no neighbors
