@@ -278,7 +278,7 @@ if st.sidebar.button("Start Simulation"):
                 if node in agent_types["Believer"]:
                     agent_types["Believer"].add(target)
                     agent_types["Neutral"].remove(target)
-                     node_colors[target] = "red"
+                    node_colors[target] = "red"
                  elif node in agent_types["Skeptic"]:
                     agent_types["Skeptic"].add(target)
                     agent_types["Neutral"].remove(target)
