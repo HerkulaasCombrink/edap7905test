@@ -231,7 +231,7 @@ if st.sidebar.button("Start Simulation"):
             continue  # Prevent early stopping
 
                 # UCB update
-                reward = 1 if target in agent_types["Believer"] else -0.2  # Give negative reward if no influence
+            reward = 1 if target in agent_types["Believer"] else -0.2  # Give negative reward if no influence
             ucb_values[target] = ((ucb_values[target] * ucb_counts[target]) + reward) / (ucb_counts[target] + 1)
             ucb_counts[target] += 1  # Increase count after update
 
