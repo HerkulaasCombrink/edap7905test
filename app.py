@@ -116,14 +116,14 @@ if st.sidebar.button("Start Simulation"):
                     continue  # Skip if no neighbors
 
             # Allow multiple influence attempts per step
-            for _ in range(random.randint(1, 3)):  # Agents can attempt influence 1-3 times per step
-                ucb_scores = {}
-                for n in neighbors:
-                    if ucb_counts[n] == 0:  # Prevent division by zero
-                        ucb_counts[n] = 1
-                    ucb_scores[n] = ucb_values[n] + exploration_factor * np.sqrt(np.log(sum(ucb_counts.values()) + 1) / ucb_counts[n]) + penalty
+                for _ in range(random.randint(1, 3)):  # Agents can attempt influence 1-3 times per step
+                    ucb_scores = {}
+                    for n in neighbors:
+                        if ucb_counts[n] == 0:  # Prevent division by zero
+                            ucb_counts[n] = 1
+                        ucb_scores[n] = ucb_values[n] + exploration_factor * np.sqrt(np.log(sum(ucb_counts.values()) + 1) / ucb_counts[n]) + penalty
 
-                target = max(ucb_scores, key=ucb_scores.get)
+                    target = max(ucb_scores, key=ucb_scores.get)
 
                 # **Influence Spreading Logic**
                 if target in agent_types["Neutral"]:
