@@ -362,8 +362,8 @@ if st.sidebar.button("Start Simulation"):
 
                 # Update UCB values
         reward = 1 if target in agent_types["Believer"] else 0  # Reward when a neutral becomes a believer
-        ucb_values[target] = (ucb_values[target] * ucb_counts[target] + reward) / (ucb_counts[target] + 1)
-        ucb_counts[target] += 1
+        ucb_values[target] = ((ucb_values[target] * ucb_counts[target]) + reward) / (ucb_counts[target] + 1)
+        ucb_counts[target] += 1  # Increase count after update
 
         # Log data for time series graph
         data_log.append([
