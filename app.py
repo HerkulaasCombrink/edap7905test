@@ -357,29 +357,29 @@ if len(agent_types["Neutral"]) > 0:
                         node_colors[target] = "red"
 
         # **Ensure influencers can impact multiple nodes**
-        if node in agent_types["Influencer"]:
-            for neighbor in neighbors:
-                if neighbor in agent_types["Neutral"]:
-                    if random.random() < 0.8:  # Influencers have an 80% chance to convert a neutral
-                        agent_types["Believer"].add(neighbor)
-                        agent_types["Neutral"].remove(neighbor)
-                        node_colors[neighbor] = "red"
+                if node in agent_types["Influencer"]:
+                    for neighbor in neighbors:
+                        if neighbor in agent_types["Neutral"]:
+                            if random.random() < 0.8:  # Influencers have an 80% chance to convert a neutral
+                                agent_types["Believer"].add(neighbor)
+                                agent_types["Neutral"].remove(neighbor)
+                                node_colors[neighbor] = "red"
 
         # **Update UCB values**
-        reward = 1 if target in agent_types["Believer"] else 0  # Reward when a neutral becomes a believer
-        ucb_values[target] = ((ucb_values[target] * ucb_counts[target]) + reward) / (ucb_counts[target] + 1)
-        ucb_counts[target] += 1  # Increase count after updatee
+                reward = 1 if target in agent_types["Believer"] else 0  # Reward when a neutral becomes a believer
+                ucb_values[target] = ((ucb_values[target] * ucb_counts[target]) + reward) / (ucb_counts[target] + 1)
+                ucb_counts[target] += 1  # Increase count after updatee
 
                 # Apply UCB to select a neighbor to influence
-        ucb_scores = {}
-        for n in neighbors:
-            if ucb_counts[n] == 0:  # Prevent division by zero
-                ucb_counts[n] = 1
-            ucb_scores[n] = ucb_values[n] + np.sqrt(2 * np.log(sum(ucb_counts.values())) / ucb_counts[n])
+                ucb_scores = {}
+                for n in neighbors:
+                    if ucb_counts[n] == 0:  # Prevent division by zero
+                        ucb_counts[n] = 1
+                    ucb_scores[n] = ucb_values[n] + np.sqrt(2 * np.log(sum(ucb_counts.values())) / ucb_counts[n])
 
 # Select the neighbor with the highest UCB score
         
-        target = max(ucb_scores, key=ucb_scores.get)  # Select neighbor with highest UCB score
+                target = max(ucb_scores, key=ucb_scores.get)  # Select neighbor with highest UCB score
                 
                 # Determine belief transition
         if node in agent_types["Believer"] and target in agent_types["Neutral"]:
