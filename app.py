@@ -113,6 +113,7 @@ if st.sidebar.button("Start Simulation"):
     penalty = -0.2  # Discourage inaction
     for t in range(steps):
         for node in list(G.nodes()):  # Iterate over all nodes
+            neighbors = list(G.neighbors(node))  # Get node's neighbors
             if node in agent_types["Believer"] or node in agent_types["Skeptic"] or node in agent_types["Influencer"]:
                 neighbors = list(G.neighbors(node))  # Get node's neighbors
                 if not neighbors:
