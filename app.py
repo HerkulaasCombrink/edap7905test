@@ -62,10 +62,10 @@ if st.sidebar.button("Start Simulation"):
     misfluencer_duration = {node: 0 for node in G.nodes()}  
 
 # Base probabilities
-    base_conversion_prob = 0.1
-    misfluencer_easy_conversion = 0.4  # Misfluencers convert more easily
-    skeptic_resistance_factor = 0.5  # Skeptics take longer to change
-    agent_microblogs = {node: [] for node in G.nodes()}
+base_conversion_prob = 0.1
+misfluencer_easy_conversion = 0.4  # Misfluencers convert more easily
+skeptic_resistance_factor = 0.5  # Skeptics take longer to change
+agent_microblogs = {node: [] for node in G.nodes()}
 
     # **Move Initial Agent Assignment Here**
     num_believers = max(1, int(0.2 * N))   # 20% believers
