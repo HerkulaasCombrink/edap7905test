@@ -104,6 +104,10 @@ if st.sidebar.button("Start Simulation"):
     # Data log for time series plotting
     data_log = []
 
+# Initialize UCB parameters for all nodes before simulation starts
+    ucb_counts = {node: 1 for node in G.nodes()}  # Track how often each node has been influenced
+    ucb_values = {node: 0.5 for node in G.nodes()}  # Start with a neutral belief score
+
     for t in range(steps):
         for node in list(G.nodes()):  # Ensure we iterate over a copy to modify the structure safely
             neighbors = list(G.neighbors(node))  # Always define it before using it
@@ -113,7 +117,14 @@ if st.sidebar.button("Start Simulation"):
                 neighbors = list(G.neighbors(node))
     
         # Apply UCB to select a neighbor to influence
-            ucb_scores = {n: ucb_values[n] + np.sqrt(2 * np.log(sum(ucb_counts.values())) / ucb_counts[n]) for n in neighbors}
+            ucb_scores = {}
+            for n in neighbors:
+                if ucb_counts[n] == 0:  # Prevent division by zero
+                    ucb_counts[n] = 1
+                ucb_scores[n] = ucb_values[n] + np.sqrt(2 * np.log(sum(ucb_counts.values())) / ucb_counts[n])
+
+# Select the neighbor with the highest UCB score
+            target = max(ucb_scores, key=ucb_scores.get)
             target = max(ucb_scores, key=ucb_scores.get)  # Select neighbor with highest UCB score
         
         # **Updated: Ensure Proper Belief Transition**
@@ -147,11 +158,18 @@ if st.sidebar.button("Start Simulation"):
 
         # **Update UCB values**
         reward = 1 if target in agent_types["Believer"] else 0  # Reward when a neutral becomes a believer
-        ucb_values[target] = (ucb_values[target] * ucb_counts[target] + reward) / (ucb_counts[target] + 1)
-        ucb_counts[target] += 1
+        ucb_values[target] = ((ucb_values[target] * ucb_counts[target]) + reward) / (ucb_counts[target] + 1)
+        ucb_counts[target] += 1  # Increase count after updatee
 
                 # Apply UCB to select a neighbor to influence
-        ucb_scores = {n: ucb_values[n] + np.sqrt(2 * np.log(sum(ucb_counts.values())) / ucb_counts[n]) for n in neighbors}
+        ucb_scores = {}
+        for n in neighbors:
+            if ucb_counts[n] == 0:  # Prevent division by zero
+                ucb_counts[n] = 1
+            ucb_scores[n] = ucb_values[n] + np.sqrt(2 * np.log(sum(ucb_counts.values())) / ucb_counts[n])
+
+# Select the neighbor with the highest UCB score
+        target = max(ucb_scores, key=ucb_scores.get) / ucb_counts[n]) for n in neighbors}
         target = max(ucb_scores, key=ucb_scores.get)  # Select neighbor with highest UCB score
                 
                 # Determine belief transition
