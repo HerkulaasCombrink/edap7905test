@@ -234,7 +234,7 @@ if len(agent_types["Neutral"]) > 0:
     ucb_values[target] = ((ucb_values[target] * ucb_counts[target]) + reward) / (ucb_counts[target] + 1)
     ucb_counts[target] += 1  # Increase count after update
 
-            if node in agent_types["Believer"] or node in agent_types["Skeptic"] or node in agent_types["Influencer"]:
+        if node in agent_types["Believer"] or node in agent_types["Skeptic"] or node in agent_types["Influencer"]:
             # UCB scoring for influence choice
                 ucb_scores = {}
                 exploration_factor = 2.5  # Encourages exploration
