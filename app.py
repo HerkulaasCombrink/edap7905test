@@ -403,10 +403,10 @@ if st.sidebar.button("Start Simulation"):
                 ucb_counts[target] += 1  # Increase count after update
 
         # Log data for time series graph
-                data_log.append([
-                    t, len(agent_types["Believer"]), len(agent_types["Skeptic"]),
-                    len(agent_types["Neutral"]), len(agent_types["Influencer"])
-                ])
+            data_log.append([
+                t, len(agent_types["Believer"]), len(agent_types["Skeptic"]),
+                len(agent_types["Neutral"]), len(agent_types["Influencer"])
+            ])
 
         # Update visualization every update_interval steps
                 if t % 10 == 0:
