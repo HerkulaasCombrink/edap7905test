@@ -261,8 +261,8 @@ if st.sidebar.button("Start Simulation"):
                 ucb_values[target] = ((ucb_values[target] * ucb_counts[target]) + reward) / (ucb_counts[target] + 1)
                 ucb_counts[target] += 1  # Increase count after update
             
-                if not neighbors:
-                    continue  # Skip if no neighbors
+            if not neighbors:
+                continue  # Skip if no neighbors
 
             # Apply UCB to select a neighbor to influence
                 ucb_scores = {}
