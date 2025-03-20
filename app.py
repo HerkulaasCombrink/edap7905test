@@ -265,7 +265,7 @@ if st.sidebar.button("Start Simulation"):
                continue  # Skip if no neighbors
 
             # Apply UCB to select a neighbor to influence
-                    ucb_scores = {}
+            ucb_scores = {}
                     for n in neighbors:
                         if ucb_counts[n] == 0:  # Prevent division by zero
                             ucb_counts[n] = 1
