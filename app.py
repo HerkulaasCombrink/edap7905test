@@ -18,7 +18,7 @@ epsilon = st.sidebar.slider("Epsilon (E-Greedy Believers)", min_value=0.0, max_v
 steps = st.sidebar.slider("Simulation Steps", min_value=50, max_value=500, value=200, step=10)
 
 # Algorithm selection
-believer_algorithm = st.sidebar.selectbox("Believer Strategy", ["E-Greedy", "Thompson Sampling", "Random"])
+believer_algorithm = st.sidebar.selectbox("Believer Strategy", ["E-Greedy", "Thompson Sampling", "UCB", "Random"])
 skeptic_algorithm = st.sidebar.selectbox("Skeptic Strategy", ["UCB", "Thompson Sampling", "Random"])
 
 # Create a Scale-Free Network
@@ -72,6 +72,9 @@ if st.sidebar.button("Start Simulation"):
             if node in agent_types["Believer"]:  # Believers applying selected strategy
                 if believer_algorithm == "E-Greedy" and random.random() < epsilon:
                     target = random.choice(neighbors)  # Explore new target
+                if believer_algorithm == "UCB":
+                    if random.random() < misinformation_spread_prob:
+                        target = max(neighbors, key=lambda n: len(list(G.neighbors(n))), default=target)
                 if random.random() < misinformation_spread_prob and target in agent_types["Neutral"]:
                     agent_types["Believer"].add(target)
                     agent_types["Neutral"].remove(target)
@@ -110,7 +113,7 @@ if st.sidebar.button("Start Simulation"):
             nx.draw(G, pos=network_pos, node_color=[node_colors[n] for n in G.nodes()], node_size=[node_sizes[n] for n in G.nodes()], edge_color="lightgray", with_labels=False)
             network_plot.pyplot(fig)
 
-            fig, axs = plt.subplots(1, 2, figsize=(18, 6))
+            fig, axs = plt.subplots(1, 3, figsize=(18, 6))
             axs[0].plot(range(len(belief_counts["Believers"])), belief_counts["Believers"], label="Believers", color="red")
             axs[0].plot(range(len(belief_counts["Skeptics"])), belief_counts["Skeptics"], label="Skeptics", color="blue")
             axs[0].set_title("Believers vs. Skeptics Over Time")
