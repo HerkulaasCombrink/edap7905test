@@ -156,9 +156,9 @@ if st.sidebar.button("Start Simulation"):
 
         elif node in agent_types["Skeptic"] and target in agent_types["Believer"]:
             if random.random() < base_conversion_prob * (1 + skeptic_resistance_factor):
-                    agent_types["Skeptic"].add(target)
-                    agent_types["Believer"].remove(target)
-                    node_colors[target] = "blue"
+                agent_types["Skeptic"].add(target)
+                agent_types["Believer"].remove(target)
+                node_colors[target] = "blue"
 
     # Misfluencers change fast
             if node in agent_types["Influencer"]:
