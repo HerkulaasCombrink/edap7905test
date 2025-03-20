@@ -103,11 +103,14 @@ if st.sidebar.button("Start Simulation"):
 
     # Data log for time series plotting
     data_log = []
+    # ✅ Add UCB initialization here
 
+   
 # Initialize UCB parameters for all nodes before simulation starts
     ucb_counts = {node: 1 for node in G.nodes()}  # Track how often each node has been influenced
     ucb_values = {node: 0.5 for node in G.nodes()}  # Start with a neutral belief score
-
+    exploration_factor = 2.5  # Encourage exploration
+    penalty = -0.2  # Discourage inaction
     for t in range(steps):
         for node in list(G.nodes()):  # Iterate over all nodes
             if node in agent_types["Believer"] or node in agent_types["Skeptic"] or node in agent_types["Influencer"]:
@@ -312,5 +315,4 @@ if st.sidebar.button("Start Simulation"):
         status_text.text(f"Simulation Step {t + 1}/{steps}")
 
     st.success("Simulation Complete")
-    
-    st.success("Simulation Complete")
+
