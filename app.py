@@ -117,12 +117,16 @@ if st.sidebar.button("Start Simulation"):
             if node in agent_types["Believer"] or node in agent_types["Skeptic"] or node in agent_types["Influencer"]:
             # UCB scoring for influence choice
                 ucb_scores = {}
+                
                 for n in neighbors:
                     if ucb_counts[n] == 0:  # Prevent division by zero
                         ucb_counts[n] = 1
-                    ucb_scores[n] = ucb_values[n] + np.sqrt(2 * np.log(sum(ucb_counts.values())) / ucb_counts[n])
+    # Introduce a higher exploration factor and a small penalty for no action
+                    exploration_factor = 2.5  # Increase exploration tendency
+                    penalty = -0.2  # Discourage repeated inaction
+                    ucb_scores[n] = ucb_values[n] + exploration_factor * np.sqrt(np.log(sum(ucb_counts.values()) + 1) / ucb_counts[n]) + penalty
 
-            # Select best neighbor to influence
+# Select the neighbor with the highest UCB score
                 target = max(ucb_scores, key=ucb_scores.get)
 
             # **Influence Logic**
