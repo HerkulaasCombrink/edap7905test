@@ -130,14 +130,23 @@ if st.sidebar.button("Start Simulation"):
             stress_factor = abs(believers_count - skeptics_count) / max(1, N)  
 
     # Choose a target neighbor for influence
-            if random.random() < 0.8:  # 80% chance to prioritize neutrals
-                neutral_neighbors = [n for n in neighbors if n in agent_types["Neutral"]]
-                if neutral_neighbors:
-                    target = random.choice(neutral_neighbors)
-                else:
-                    target = random.choice(neighbors)
+            neutral_neighbors = [n for n in neighbors if n in agent_types["Neutral"]]
+            if neutral_neighbors:
+                target = random.choice(neutral_neighbors)
+                # Ensure conversion success rate increases over time
+                conversion_boost = min(1.0, 0.2 + (t / steps) * 0.5)  # Becomes easier over time
+                if node in agent_types["Believer"]:
+                    if random.random() < (misinformation_spread_prob + conversion_boost):
+                        agent_types["Believer"].add(target)
+                        agent_types["Neutral"].remove(target)
+                        node_colors[target] = "red"
+                elif node in agent_types["Skeptic"]:
+                    if random.random() < (fact_check_prob + conversion_boost):
+                        agent_types["Skeptic"].add(target)
+                        agent_types["Neutral"].remove(target)
+                        node_colors[target] = "blue"
             else:
-                target = random.choice(neighbors)  # 20% chance to engage with non-neutrals  
+                target = random.choice(neighbors)  # Engage with other non-neutrals  
 
     # Convert misfluencers easily
             if node in agent_types["Believer"] and target in agent_types["Influencer"]:
@@ -182,9 +191,10 @@ if st.sidebar.button("Start Simulation"):
                 misfluencer_duration[node] = 0
 
             # Allow multiple influence attempts per step
-                for _ in range(random.randint(1, 3)):  # Agents can attempt influence 1-3 times per step
+                influence_attempts = min(5, max(2, len(agent_types["Neutral"]) // 10))  # More attempts if more neutrals exist
+                for _ in range(influence_attempts):
                     ucb_scores = {n: ucb_values[n] + exploration_factor * np.sqrt(np.log(sum(ucb_counts.values()) + 1) / ucb_counts[n]) + penalty for n in neighbors}
-                    target = max(ucb_scores, key=ucb_scores.get)  # Select best neighbor to influence
+                    target = max(ucb_scores, key=ucb_scores.get)
                     for n in neighbors:
                         if ucb_counts[n] == 0:  # Prevent division by zero
                             ucb_counts[n] = 1
@@ -210,9 +220,14 @@ if st.sidebar.button("Start Simulation"):
                 if node in agent_types["Influencer"]:
                     for neighbor in neighbors:
                         if neighbor in agent_types["Neutral"]:
-                            agent_types["Believer"].add(neighbor)
-                            agent_types["Neutral"].remove(neighbor)
-                            node_colors[neighbor] = "red"
+                            if random.random() < 0.9:  # 90% chance of conversion
+                                agent_types["Believer"].add(neighbor)
+                                agent_types["Neutral"].remove(neighbor)
+                                node_colors[neighbor] = "red"
+
+# Ensure simulation does not stop early
+if len(agent_types["Neutral"]) > 0:
+    continue  # Prevent early stopping
 
                 # UCB update
                 reward = 1 if target in agent_types["Believer"] else -0.2  # Give negative reward if no influence
