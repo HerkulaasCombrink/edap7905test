@@ -403,19 +403,19 @@ if st.sidebar.button("Start Simulation"):
                 ucb_counts[target] += 1  # Increase count after update
 
         # Log data for time series graph
-            data_log.append([
-                t, len(agent_types["Believer"]), len(agent_types["Skeptic"]),
-                len(agent_types["Neutral"]), len(agent_types["Influencer"])
-            ])
+                data_log.append([
+                    t, len(agent_types["Believer"]), len(agent_types["Skeptic"]),
+                    len(agent_types["Neutral"]), len(agent_types["Influencer"])
+                ])
 
         # Update visualization every update_interval steps
-                if t % 10 == 0:
-                    draw_network(G, node_colors, node_sizes, network_pos, network_plot)
-                    plot_time_series(data_log, time_series_plot)
-                    time.sleep(0.5)
+            if t % 10 == 0:
+                draw_network(G, node_colors, node_sizes, network_pos, network_plot)
+                plot_time_series(data_log, time_series_plot)
+                time.sleep(0.5)
 
-                progress_bar.progress((t + 1) / steps)
-                status_text.text(f"Simulation Step {t + 1}/{steps}")
+            progress_bar.progress((t + 1) / steps)
+            status_text.text(f"Simulation Step {t + 1}/{steps}")
 
     st.success("Simulation Complete")
 
