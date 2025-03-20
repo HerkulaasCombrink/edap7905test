@@ -301,15 +301,15 @@ if len(agent_types["Neutral"]) > 0:
                     target = max(ucb_scores, key=ucb_scores.get)  # Select best neighbor to influence
 
             # **Influence Spreading Logic**
-        if target in agent_types["Neutral"]:
-            if node in agent_types["Believer"]:
-                agent_types["Believer"].add(target)
-                agent_types["Neutral"].remove(target)
-                node_colors[target] = "red"
-            elif node in agent_types["Skeptic"]:
-                agent_types["Skeptic"].add(target)
-                agent_types["Neutral"].remove(target)
-                node_colors[target] = "blue"
+                if target in agent_types["Neutral"]:
+                    if node in agent_types["Believer"]:
+                        agent_types["Believer"].add(target)
+                        agent_types["Neutral"].remove(target)
+                        node_colors[target] = "red"
+                    elif node in agent_types["Skeptic"]:
+                        agent_types["Skeptic"].add(target)
+                        agent_types["Neutral"].remove(target)
+                        node_colors[target] = "blue"
 
             # **Influencer-Specific Influence Spread**
                 if node in agent_types["Influencer"]:
