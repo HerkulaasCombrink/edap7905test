@@ -113,6 +113,8 @@ if st.sidebar.button("Start Simulation"):
     penalty = -0.2  # Discourage inaction
     for t in range(steps):
         for node in list(G.nodes()):  # Iterate over all nodes
+            if node not in agent_types["Believer"] and node not in agent_types["Skeptic"] and node not in agent_types["Influencer"]:
+                continue
             neighbors = list(G.neighbors(node))  # Get node's neighbors
             if node in agent_types["Believer"] or node in agent_types["Skeptic"] or node in agent_types["Influencer"]:
                 neighbors = list(G.neighbors(node))  # Get node's neighbors
@@ -157,10 +159,12 @@ if st.sidebar.button("Start Simulation"):
             if node in agent_types["Believer"] or node in agent_types["Skeptic"] or node in agent_types["Influencer"]:
             # UCB scoring for influence choice
                 ucb_scores = {}
-                
+                exploration_factor = 2.5  # Encourages exploration
+                penalty = -0.2
                 for n in neighbors:
                     if ucb_counts[n] == 0:  # Prevent division by zero
                         ucb_counts[n] = 1
+                    ucb_scores[n] = ucb_values[n] + exploration_factor * np.sqrt(np.log(sum(ucb_counts.values()) + 1) / ucb_counts[n]) + penalty
     # Introduce a higher exploration factor and a small penalty for no action
                     exploration_factor = 2.5  # Increase exploration tendency
                     penalty = -0.2  # Discourage repeated inaction
@@ -172,14 +176,25 @@ if st.sidebar.button("Start Simulation"):
             # **Influence Logic**
                 if target in agent_types["Neutral"]:
                     if node in agent_types["Believer"]:
-                        agent_types["Believer"].add(target)
-                        agent_types["Neutral"].remove(target)
-                        node_colors[target] = "red"
+                        if random.random() < misinformation_spread_prob:
+                            agent_types["Believer"].add(target)
+                            agent_types["Neutral"].remove(target)
+                            node_colors[target] = "red"
                     elif node in agent_types["Skeptic"]:
+                        if random.random() < fact_check_prob:
+                            agent_types["Skeptic"].add(target)
+                            agent_types["Neutral"].remove(target)
+                            node_colors[target] = "blue"
+                elif target in agent_types["Skeptic"] and node in agent_types["Believer"]:
+                    if random.random() < skeptic_conversion_prob:
+                        agent_types["Believer"].add(target)
+                        agent_types["Skeptic"].remove(target)
+                        node_colors[target] = "red"
+                elif target in agent_types["Believer"] and node in agent_types["Skeptic"]:
+                    if random.random() < misinformation_spread_prob:
                         agent_types["Skeptic"].add(target)
-                        agent_types["Neutral"].remove(target)
+                        agent_types["Believer"].remove(target)
                         node_colors[target] = "blue"
-
             # **Influencer Impacts Multiple Nodes**
                 if node in agent_types["Influencer"]:
                     for neighbor in neighbors:
