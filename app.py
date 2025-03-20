@@ -382,14 +382,14 @@ if len(agent_types["Neutral"]) > 0:
                 target = max(ucb_scores, key=ucb_scores.get)  # Select neighbor with highest UCB score
                 
                 # Determine belief transition
-        if node in agent_types["Believer"] and target in agent_types["Neutral"]:
-                agent_types["Believer"].add(target)
-                agent_types["Neutral"].remove(target)
-                node_colors[target] = "red"
-        elif node in agent_types["Skeptic"] and target in agent_types["Believer"]:
-                agent_types["Skeptic"].add(target)
-                agent_types["Believer"].remove(target)
-                node_colors[target] = "blue"
+                if node in agent_types["Believer"] and target in agent_types["Neutral"]:
+                        agent_types["Believer"].add(target)
+                        agent_types["Neutral"].remove(target)
+                        node_colors[target] = "red"
+                elif node in agent_types["Skeptic"] and target in agent_types["Believer"]:
+                        agent_types["Skeptic"].add(target)
+                        agent_types["Believer"].remove(target)
+                        node_colors[target] = "blue"
 
                 # Update UCB values
         if target in agent_types["Believer"]:
