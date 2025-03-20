@@ -110,9 +110,44 @@ if st.sidebar.button("Start Simulation"):
 
     for t in range(steps):
         for node in list(G.nodes()):  # Iterate over all nodes
-            neighbors = list(G.neighbors(node))  # Ensure neighbors is always defined
-            if not neighbors:
-                continue  # Skip iteration if no neighbors
+            if node in agent_types["Believer"] or node in agent_types["Skeptic"] or node in agent_types["Influencer"]:
+                neighbors = list(G.neighbors(node))  # Get node's neighbors
+                if not neighbors:
+                    continue  # Skip if no neighbors
+
+            # Allow multiple influence attempts per step
+            for _ in range(random.randint(1, 3)):  # Agents can attempt influence 1-3 times per step
+                ucb_scores = {}
+                for n in neighbors:
+                    if ucb_counts[n] == 0:  # Prevent division by zero
+                        ucb_counts[n] = 1
+                    ucb_scores[n] = ucb_values[n] + exploration_factor * np.sqrt(np.log(sum(ucb_counts.values()) + 1) / ucb_counts[n]) + penalty
+
+                target = max(ucb_scores, key=ucb_scores.get)
+
+                # **Influence Spreading Logic**
+                if target in agent_types["Neutral"]:
+                    if node in agent_types["Believer"]:
+                        agent_types["Believer"].add(target)
+                        agent_types["Neutral"].remove(target)
+                        node_colors[target] = "red"
+                    elif node in agent_types["Skeptic"]:
+                        agent_types["Skeptic"].add(target)
+                        agent_types["Neutral"].remove(target)
+                        node_colors[target] = "blue"
+
+                # **Influencer-Specific Influence Spread**
+                if node in agent_types["Influencer"]:
+                    for neighbor in neighbors:
+                        if neighbor in agent_types["Neutral"]:
+                            agent_types["Believer"].add(neighbor)
+                            agent_types["Neutral"].remove(neighbor)
+                            node_colors[neighbor] = "red"
+
+                # **UCB Value Update**
+                reward = 1 if target in agent_types["Believer"] else -0.2  # Negative reward for poor selection
+                ucb_values[target] = ((ucb_values[target] * ucb_counts[target]) + reward) / (ucb_counts[target] + 1)
+                ucb_counts[target] += 1  # Increase count after update
 
             if node in agent_types["Believer"] or node in agent_types["Skeptic"] or node in agent_types["Influencer"]:
             # UCB scoring for influence choice
