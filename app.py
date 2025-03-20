@@ -58,6 +58,13 @@ if st.sidebar.button("Start Simulation"):
     node_sizes = {node: 80 for node in G.nodes()}
     skep_strategies = {}
     agent_types = {"Believer": set(), "Skeptic": set(), "Neutral": set(), "Influencer": set()}
+    skeptic_duration = {node: 0 for node in G.nodes()}  
+    misfluencer_duration = {node: 0 for node in G.nodes()}  
+
+# Base probabilities
+    base_conversion_prob = 0.1
+    misfluencer_easy_conversion = 0.4  # Misfluencers convert more easily
+    skeptic_resistance_factor = 0.5  # Skeptics take longer to change
     agent_microblogs = {node: [] for node in G.nodes()}
 
     # **Move Initial Agent Assignment Here**
@@ -112,14 +119,60 @@ if st.sidebar.button("Start Simulation"):
     exploration_factor = 2.5  # Encourage exploration
     penalty = -0.2  # Discourage inaction
     for t in range(steps):
-        for node in list(G.nodes()):  # Iterate over all nodes
-            if node not in agent_types["Believer"] and node not in agent_types["Skeptic"] and node not in agent_types["Influencer"]:
-                continue
-            neighbors = list(G.neighbors(node))  # Get node's neighbors
-            if node in agent_types["Believer"] or node in agent_types["Skeptic"] or node in agent_types["Influencer"]:
-                neighbors = list(G.neighbors(node))  # Get node's neighbors
-                if not neighbors:
-                    continue  # Skip if no neighbors
+        for node in list(G.nodes()):
+            neighbors = list(G.neighbors(node))  
+            if not neighbors:
+                continue  
+
+    # Dynamic conversion probability based on network conditions
+            believers_count = len(agent_types["Believer"])
+            skeptics_count = len(agent_types["Skeptic"])
+            stress_factor = abs(believers_count - skeptics_count) / max(1, N)  
+
+    # Choose a target neighbor for influence
+            target = random.choice(neighbors)  
+
+    # Convert misfluencers easily
+            if node in agent_types["Believer"] and target in agent_types["Influencer"]:
+                if random.random() < misfluencer_easy_conversion * (1 + stress_factor):
+                    agent_types["Believer"].add(target)
+                    agent_types["Influencer"].remove(target)
+                    node_colors[target] = "red"
+
+            elif node in agent_types["Skeptic"] and target in agent_types["Influencer"]:
+                if random.random() < misfluencer_easy_conversion * (1 + stress_factor):
+                    agent_types["Skeptic"].add(target)
+                    agent_types["Influencer"].remove(target)
+                    node_colors[target] = "blue"
+
+    # Skeptics resist more but can change
+    if node in agent_types["Believer"] and target in agent_types["Skeptic"]:
+        skeptic_duration[target] += 1  
+        if skeptic_duration[target] > 3 and random.random() < base_conversion_prob * (1 - skeptic_resistance_factor):
+            agent_types["Believer"].add(target)
+            agent_types["Skeptic"].remove(target)
+            node_colors[target] = "red"
+            skeptic_duration[target] = 0  # Reset
+
+            elif node in agent_types["Skeptic"] and target in agent_types["Believer"]:
+                if random.random() < base_conversion_prob * (1 + skeptic_resistance_factor):
+                    agent_types["Skeptic"].add(target)
+                    agent_types["Believer"].remove(target)
+                    node_colors[target] = "blue"
+
+    # Misfluencers change fast
+            if node in agent_types["Influencer"]:
+                misfluencer_duration[node] += 1
+                if misfluencer_duration[node] > 5:
+                    if random.random() < 0.5:
+                        agent_types["Believer"].add(node)
+                        agent_types["Influencer"].remove(node)
+                        node_colors[node] = "red"
+                    else:
+                        agent_types["Skeptic"].add(node)
+                        agent_types["Influencer"].remove(node)
+                        node_colors[node] = "blue"
+                    misfluencer_duration[node] = 0
 
             # Allow multiple influence attempts per step
                 for _ in range(random.randint(1, 3)):  # Agents can attempt influence 1-3 times per step
