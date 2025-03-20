@@ -260,10 +260,7 @@ if st.sidebar.button("Start Simulation"):
                 reward = 1 if target in agent_types["Believer"] else 0  # Reward when a neutral becomes a believer
                 ucb_values[target] = ((ucb_values[target] * ucb_counts[target]) + reward) / (ucb_counts[target] + 1)
                 ucb_counts[target] += 1  # Increase count after update
-            
-    if not neighbors:
-        continue  # Skip if no neighbors
-
+ 
             # Apply UCB to select a neighbor to influence
         ucb_scores = {}
         for n in neighbors:
