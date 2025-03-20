@@ -62,10 +62,10 @@ if st.sidebar.button("Start Simulation"):
     misfluencer_duration = {node: 0 for node in G.nodes()}  
 
 # Base probabilities
-base_conversion_prob = 0.1
-misfluencer_easy_conversion = 0.4  # Misfluencers convert more easily
-skeptic_resistance_factor = 0.5  # Skeptics take longer to change
-agent_microblogs = {node: [] for node in G.nodes()}
+    base_conversion_prob = 0.1
+    misfluencer_easy_conversion = 0.4  # Misfluencers convert more easily
+    skeptic_resistance_factor = 0.5  # Skeptics take longer to change
+    agent_microblogs = {node: [] for node in G.nodes()}
 
     # **Move Initial Agent Assignment Here**
     num_believers = max(1, int(0.2 * N))   # 20% believers
@@ -162,13 +162,13 @@ agent_microblogs = {node: [] for node in G.nodes()}
                     node_colors[target] = "blue"
 
     # Skeptics resist more but can change
-        if node in agent_types["Believer"] and target in agent_types["Skeptic"]:
-            skeptic_duration[target] += 1  
-            if skeptic_duration[target] > 3 and random.random() < base_conversion_prob * (1 - skeptic_resistance_factor):
-                agent_types["Believer"].add(target)
-                agent_types["Skeptic"].remove(target)
-                node_colors[target] = "red"
-                skeptic_duration[target] = 0  # Reset
+if node in agent_types["Believer"] and target in agent_types["Skeptic"]:
+    skeptic_duration[target] += 1  
+    if skeptic_duration[target] > 3 and random.random() < base_conversion_prob * (1 - skeptic_resistance_factor):
+        agent_types["Believer"].add(target)
+        agent_types["Skeptic"].remove(target)
+        node_colors[target] = "red"
+        skeptic_duration[target] = 0  # Reset
 
         elif node in agent_types["Skeptic"] and target in agent_types["Believer"]:
             if random.random() < base_conversion_prob * (1 + skeptic_resistance_factor):
