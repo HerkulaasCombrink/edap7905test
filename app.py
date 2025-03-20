@@ -68,14 +68,13 @@ if st.sidebar.button("Start Simulation"):
     agent_microblogs = {node: [] for node in G.nodes()}
 
     # **Move Initial Agent Assignment Here**
+    all_nodes = list(G.nodes())
+    random.shuffle(all_nodes)  # Shuffle to ensure randomness
     num_believers = max(1, int(0.2 * N))   # 20% believers
     num_skeptics = max(1, int(0.2 * N))    # 20% skeptics
     num_influencers = max(1, int(0.05 * N)) # 5% influencers
     num_neutrals = N - (num_believers + num_skeptics + num_influencers)  # Remaining are neutrals
-
-    all_nodes = list(G.nodes())
-    random.shuffle(all_nodes)  # Shuffle to ensure randomness
-
+    
     # Assign agent types
     believers = set(all_nodes[:num_believers])
     skeptics = set(all_nodes[num_believers:num_believers + num_skeptics])
@@ -130,16 +129,16 @@ if st.sidebar.button("Start Simulation"):
             stress_factor = abs(believers_count - skeptics_count) / max(1, N)  
 
     # Choose a target neighbor for influence
-            neutral_neighbors = [n for n in neighbors if n in agent_types["Neutral"]]
-            if neutral_neighbors:
-                target = random.choice(neutral_neighbors)
+        neutral_neighbors = [n for n in neighbors if n in agent_types["Neutral"]]
+        if neutral_neighbors:
+            target = random.choice(neutral_neighbors)
                 # Ensure conversion success rate increases over time
-                conversion_boost = min(1.0, 0.2 + (t / steps) * 0.5)  # Becomes easier over time
-                if node in agent_types["Believer"]:
-                    if random.random() < (misinformation_spread_prob + conversion_boost):
-                        agent_types["Believer"].add(target)
-                        agent_types["Neutral"].remove(target)
-                        node_colors[target] = "red"
+            conversion_boost = min(1.0, 0.2 + (t / steps) * 0.5)  # Becomes easier over time
+            if node in agent_types["Believer"]:
+                if random.random() < (misinformation_spread_prob + conversion_boost):
+                    agent_types["Believer"].add(target)
+                    agent_types["Neutral"].remove(target)
+                    node_colors[target] = "red"
                 elif node in agent_types["Skeptic"]:
                     if random.random() < (fact_check_prob + conversion_boost):
                         agent_types["Skeptic"].add(target)
@@ -147,7 +146,9 @@ if st.sidebar.button("Start Simulation"):
                         node_colors[target] = "blue"
             else:
                 target = random.choice(neighbors)  # Engage with other non-neutrals  
-
+                reward = 1 if target in agent_types["Believer"] else -0.2
+                ucb_values[target] = ((ucb_values[target] * ucb_counts[target]) + reward) / (ucb_counts[target] + 1)
+                ucb_counts[target] += 1
     # Convert misfluencers easily
             if node in agent_types["Believer"] and target in agent_types["Influencer"]:
                 if random.random() < misfluencer_easy_conversion * (1 + stress_factor):
@@ -162,33 +163,33 @@ if st.sidebar.button("Start Simulation"):
                     node_colors[target] = "blue"
 
     # Skeptics resist more but can change
-if node in agent_types["Believer"] and target in agent_types["Skeptic"]:
-    skeptic_duration[target] += 1  
-    if skeptic_duration[target] > 3 and random.random() < base_conversion_prob * (1 - skeptic_resistance_factor):
-        agent_types["Believer"].add(target)
-        agent_types["Skeptic"].remove(target)
-        node_colors[target] = "red"
-        skeptic_duration[target] = 0  # Reset
+                if node in agent_types["Believer"] and target in agent_types["Skeptic"]:
+                    skeptic_duration[target] += 1  
+                    if skeptic_duration[target] > 3 and random.random() < base_conversion_prob * (1 - skeptic_resistance_factor):
+                        agent_types["Believer"].add(target)
+                        agent_types["Skeptic"].remove(target)
+                        node_colors[target] = "red"
+                        skeptic_duration[target] = 0  # Reset
 
-    elif node in agent_types["Skeptic"] and target in agent_types["Believer"]:
-        if random.random() < base_conversion_prob * (1 + skeptic_resistance_factor):
-            agent_types["Skeptic"].add(target)
-            agent_types["Believer"].remove(target)
-            node_colors[target] = "blue"
+                    elif node in agent_types["Skeptic"] and target in agent_types["Believer"]:
+                        if random.random() < base_conversion_prob * (1 + skeptic_resistance_factor):
+                            agent_types["Skeptic"].add(target)
+                            agent_types["Believer"].remove(target)
+                            node_colors[target] = "blue"
 
     # Misfluencers change fast
-        if node in agent_types["Influencer"]:
-            misfluencer_duration[node] += 1
-            if misfluencer_duration[node] > 5:
-                if random.random() < 0.5:
-                    agent_types["Believer"].add(node)
-                    agent_types["Influencer"].remove(node)
-                    node_colors[node] = "red"
-                else:
-                    agent_types["Skeptic"].add(node)
-                    agent_types["Influencer"].remove(node)
-                    node_colors[node] = "blue"
-                misfluencer_duration[node] = 0
+                if node in agent_types["Influencer"]:
+                    misfluencer_duration[node] += 1
+                    if misfluencer_duration[node] > 5:
+                        if random.random() < 0.5:
+                            agent_types["Believer"].add(node)
+                            agent_types["Influencer"].remove(node)
+                            node_colors[node] = "red"
+                        else:
+                            agent_types["Skeptic"].add(node)
+                            agent_types["Influencer"].remove(node)
+                            node_colors[node] = "blue"
+                        misfluencer_duration[node] = 0
 
             # Allow multiple influence attempts per step
                 influence_attempts = min(5, max(2, len(agent_types["Neutral"]) // 10))  # More attempts if more neutrals exist
