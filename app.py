@@ -266,12 +266,12 @@ if st.sidebar.button("Start Simulation"):
 
             # Apply UCB to select a neighbor to influence
             ucb_scores = {}
-                for n in neighbors:
-                    if ucb_counts[n] == 0:  # Prevent division by zero
-                        ucb_counts[n] = 1
-                    ucb_scores[n] = ucb_values[n] + np.sqrt(2 * np.log(sum(ucb_counts.values())) / ucb_counts[n])
+            for n in neighbors:
+                if ucb_counts[n] == 0:  # Prevent division by zero
+                    ucb_counts[n] = 1
+                ucb_scores[n] = ucb_values[n] + np.sqrt(2 * np.log(sum(ucb_counts.values())) / ucb_counts[n])
 
-                 target = max(ucb_scores, key=ucb_scores.get)  # Select best neighbor to influence
+                target = max(ucb_scores, key=ucb_scores.get)  # Select best neighbor to influence
 
             # **Influence Spreading Logic**
                 if target in agent_types["Neutral"]:
