@@ -392,30 +392,30 @@ if len(agent_types["Neutral"]) > 0:
                         node_colors[target] = "blue"
 
                 # Update UCB values
-        if target in agent_types["Believer"]:
-            reward = 1.5 if node in agent_types["Influencer"] else 1  # Influencers get higher rewards
-        elif target in agent_types["Skeptic"]:
-            reward = 1.5 if node in agent_types["Influencer"] else 1
-        elif target in agent_types["Neutral"]:  # Large reward for converting a neutral
-            reward = 2 if node in agent_types["Influencer"] else 1.5
+                if target in agent_types["Believer"]:
+                    reward = 1.5 if node in agent_types["Influencer"] else 1  # Influencers get higher rewards
+                elif target in agent_types["Skeptic"]:
+                    reward = 1.5 if node in agent_types["Influencer"] else 1
+                elif target in agent_types["Neutral"]:  # Large reward for converting a neutral
+                    reward = 2 if node in agent_types["Influencer"] else 1.5
 
-        ucb_values[target] = ((ucb_values[target] * ucb_counts[target]) + reward) / (ucb_counts[target] + 1)
-        ucb_counts[target] += 1  # Increase count after update
+                ucb_values[target] = ((ucb_values[target] * ucb_counts[target]) + reward) / (ucb_counts[target] + 1)
+                ucb_counts[target] += 1  # Increase count after update
 
         # Log data for time series graph
-        data_log.append([
-            t, len(agent_types["Believer"]), len(agent_types["Skeptic"]),
-            len(agent_types["Neutral"]), len(agent_types["Influencer"])
-        ])
+                data_log.append([
+                    t, len(agent_types["Believer"]), len(agent_types["Skeptic"]),
+                    len(agent_types["Neutral"]), len(agent_types["Influencer"])
+                ])
 
         # Update visualization every update_interval steps
-        if t % 10 == 0:
-            draw_network(G, node_colors, node_sizes, network_pos, network_plot)
-            plot_time_series(data_log, time_series_plot)
-            time.sleep(0.5)
+                if t % 10 == 0:
+                    draw_network(G, node_colors, node_sizes, network_pos, network_plot)
+                    plot_time_series(data_log, time_series_plot)
+                    time.sleep(0.5)
 
-        progress_bar.progress((t + 1) / steps)
-        status_text.text(f"Simulation Step {t + 1}/{steps}")
+                progress_bar.progress((t + 1) / steps)
+                status_text.text(f"Simulation Step {t + 1}/{steps}")
 
     st.success("Simulation Complete")
 
