@@ -86,16 +86,24 @@ if st.sidebar.button("Start Simulation"):
                     reward_believer += 2
 
             elif node in agent_types["Skeptic"]:  # Skeptics applying selected strategy
-                if node in skep_strategies and skep_strategies.get(node, "UCB") == "UCB":  # Default to UCB if not assigned
+                if skep_strategies.get(node, "UCB") == "UCB":  # UCB Strategy
                     if random.random() < fact_check_prob and target in agent_types["Believer"]:
                         agent_types["Skeptic"].add(target)
                         agent_types["Believer"].remove(target)
                         node_colors[target] = "blue"
                         reward_skeptic += 1
-                    elif target in agent_types["Influencer"] and node_colors[target] == "red":
+                elif skep_strategies.get(node, "UCB") == "Thompson Sampling":  # Thompson Sampling Strategy
+                    if random.betavariate(2, 5) > 0.5 and target in agent_types["Believer"]:
                         agent_types["Skeptic"].add(target)
+                        agent_types["Believer"].remove(target)
                         node_colors[target] = "blue"
-                        reward_skeptic += 2
+                        reward_skeptic += 1
+                elif skep_strategies.get(node, "UCB") == "Random":  # Random Strategy
+                    if random.random() < 0.5 and target in agent_types["Believer"]:
+                        agent_types["Skeptic"].add(target)
+                        agent_types["Believer"].remove(target)
+                        node_colors[target] = "blue"
+                        reward_skeptic += 1
 
         rewards["Believer"].append(reward_believer)
         rewards["Skeptic"].append(reward_skeptic)
