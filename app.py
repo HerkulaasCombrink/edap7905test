@@ -130,7 +130,11 @@ if st.sidebar.button("Start Simulation"):
             stress_factor = abs(believers_count - skeptics_count) / max(1, N)  
 
     # Choose a target neighbor for influence
-            target = random.choice(neighbors)  
+            neutral_neighbors = [n for n in neighbors if n in agent_types["Neutral"]]
+            if neutral_neighbors:
+                target = random.choice(neutral_neighbors)  # Prioritize neutrals first
+            else:
+                target = random.choice(neighbors)  # If no neutrals, pick anyone  
 
     # Convert misfluencers easily
             if node in agent_types["Believer"] and target in agent_types["Influencer"]:
@@ -187,14 +191,17 @@ if st.sidebar.button("Start Simulation"):
 
                 # **Influence Spreading Logic**
                 if target in agent_types["Neutral"]:
-                    if node in agent_types["Believer"]:
-                        agent_types["Believer"].add(target)
-                        agent_types["Neutral"].remove(target)
-                        node_colors[target] = "red"
-                    elif node in agent_types["Skeptic"]:
-                        agent_types["Skeptic"].add(target)
-                        agent_types["Neutral"].remove(target)
-                        node_colors[target] = "blue"
+                    conversion_prob = misinformation_spread_prob if node in agent_types["Believer"] else fact_check_prob
+                    conversion_boost = 0.2 if node in agent_types["Influencer"] else 0  # Influencers boost conversion
+                    if random.random() < (conversion_prob + conversion_boost):
+                        if node in agent_types["Believer"]:
+                            agent_types["Believer"].add(target)
+                            agent_types["Neutral"].remove(target)
+                            node_colors[target] = "red"
+                        elif node in agent_types["Skeptic"]:
+                            agent_types["Skeptic"].add(target)
+                            agent_types["Neutral"].remove(target)
+                            node_colors[target] = "blue"
 
                 # Influence multiple nodes if influencer
                 if node in agent_types["Influencer"]:
