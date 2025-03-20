@@ -161,18 +161,18 @@ if st.sidebar.button("Start Simulation"):
                 node_colors[target] = "blue"
 
     # Misfluencers change fast
-            if node in agent_types["Influencer"]:
-                misfluencer_duration[node] += 1
-                if misfluencer_duration[node] > 5:
-                    if random.random() < 0.5:
-                        agent_types["Believer"].add(node)
-                        agent_types["Influencer"].remove(node)
-                        node_colors[node] = "red"
-                    else:
-                        agent_types["Skeptic"].add(node)
-                        agent_types["Influencer"].remove(node)
-                        node_colors[node] = "blue"
-                    misfluencer_duration[node] = 0
+        if node in agent_types["Influencer"]:
+            misfluencer_duration[node] += 1
+            if misfluencer_duration[node] > 5:
+                if random.random() < 0.5:
+                    agent_types["Believer"].add(node)
+                    agent_types["Influencer"].remove(node)
+                    node_colors[node] = "red"
+                else:
+                    agent_types["Skeptic"].add(node)
+                    agent_types["Influencer"].remove(node)
+                    node_colors[node] = "blue"
+                misfluencer_duration[node] = 0
 
             # Allow multiple influence attempts per step
                 for _ in range(random.randint(1, 3)):  # Agents can attempt influence 1-3 times per step
