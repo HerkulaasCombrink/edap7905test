@@ -170,11 +170,11 @@ if node in agent_types["Believer"] and target in agent_types["Skeptic"]:
         node_colors[target] = "red"
         skeptic_duration[target] = 0  # Reset
 
-        elif node in agent_types["Skeptic"] and target in agent_types["Believer"]:
-            if random.random() < base_conversion_prob * (1 + skeptic_resistance_factor):
-                agent_types["Skeptic"].add(target)
-                agent_types["Believer"].remove(target)
-                node_colors[target] = "blue"
+    elif node in agent_types["Skeptic"] and target in agent_types["Believer"]:
+        if random.random() < base_conversion_prob * (1 + skeptic_resistance_factor):
+            agent_types["Skeptic"].add(target)
+            agent_types["Believer"].remove(target)
+            node_colors[target] = "blue"
 
     # Misfluencers change fast
         if node in agent_types["Influencer"]:
