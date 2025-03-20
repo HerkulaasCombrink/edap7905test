@@ -1,128 +1,141 @@
+import streamlit as st
 import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import random
-import math
-import statsmodels.api as sm
-from scipy import stats
-from statsmodels.tsa.stattools import grangercausalitytests
+import time
 
-# Customizable Parameters
-def get_model_params():
-    return {
-        "N": 100,  # Number of agents
-        "smart_agents": 20,  # Number of RL agents
-        "network_type": "dynamic",  # Network structure
-        "misinformation_spread_prob": 0.3,  # Probability of misinformation spreading
-        "skeptic_ratio": 0.2,  # Initial ratio of skeptical agents
-        "influencer_ratio": 0.1,  # Ratio of influencers
-        "fact_check_prob": 0.1,  # Probability of fact-checking intervention
-        "steps": 200,  # Total number of steps
-        "rewiring_prob": 0.1,  # Probability of rewiring connections at each step
-        "epsilon": 0.1  # Exploration parameter for E-Greedy skeptics
-    }
+# Streamlit UI setup
+st.title("Misinformation Dynamic Network Simulation")
+st.sidebar.header("Simulation Parameters")
 
-# Create a Dynamic Network
-params = get_model_params()
-N = params["N"]
-rewiring_prob = params["rewiring_prob"]
-G = nx.erdos_renyi_graph(N, 0.05)  # Initial random network
+# Customizable parameters
+N = st.sidebar.slider("Number of Agents", min_value=50, max_value=500, value=100, step=10)
+misinformation_spread_prob = st.sidebar.slider("Misinformation Spread Probability", min_value=0.0, max_value=1.0, value=0.3, step=0.05)
+fact_check_prob = st.sidebar.slider("Fact-Checking Probability", min_value=0.0, max_value=1.0, value=0.1, step=0.05)
+skeptic_conversion_prob = st.sidebar.slider("Skeptic Conversion Probability", min_value=0.0, max_value=1.0, value=0.05, step=0.01)  # New parameter
+epsilon = st.sidebar.slider("Epsilon (E-Greedy Believers)", min_value=0.0, max_value=1.0, value=0.1, step=0.05)
+steps = st.sidebar.slider("Simulation Steps", min_value=50, max_value=500, value=200, step=10)
+
+# Algorithm selection
+believer_algorithm = st.sidebar.selectbox("Believer Strategy", ["E-Greedy", "Thompson Sampling", "UCB", "Random"])
+skeptic_algorithm = st.sidebar.selectbox("Skeptic Strategy", ["UCB", "Thompson Sampling", "Random"])
+
+# Create a Scale-Free Network
+G = nx.barabasi_albert_graph(N, 3)
+network_pos = nx.spring_layout(G)  # Fixed layout for consistent visualization
 
 # Assign belief states to nodes
 belief_states = ["Believer", "Skeptic", "Neutral", "Influencer"]
 node_colors = {}
 node_sizes = {}
-skep_types = ["UCB", "E-Greedy"]
-skep_strategies = {}
-agent_types = {"UCBAgent": {}, "EpsilonGreedyAgent": {}, "ThompsonSamplingAgent": {}, "RandomAgent": {}}
+skep_strategies = {}  # Store selected skeptic strategy
+agent_types = {"Believer": set(), "Skeptic": set(), "Neutral": set(), "Influencer": set()}
+rewards = {"Skeptic": [0], "Believer": [0]}  # Track cumulative rewards over time
 
 for node in G.nodes():
     belief = random.choices(belief_states, weights=[0.4, 0.3, 0.2, 0.1])[0]
-    agent_type = random.choice(list(agent_types.keys()))
     if belief == "Skeptic":
-        skep_strategies[node] = random.choice(skep_types)  # Assign UCB or E-Greedy
-    agent_types[agent_type][node] = belief
+        skep_strategies[node] = skeptic_algorithm  # Assign selected skeptic algorithm
+    elif belief == "Believer":
+        skep_strategies[node] = believer_algorithm  # Assign selected believer algorithm
+    agent_types[belief].add(node)
     node_colors[node] = {"Believer": "red", "Skeptic": "blue", "Neutral": "gray", "Influencer": "green"}[belief]
     node_sizes[node] = {"Believer": 100, "Skeptic": 100, "Neutral": 80, "Influencer": 300}[belief]
 
-# Track success rates for UCB skeptics
-ucb_success_rates = {node: 0 for node in G.nodes() if node in skep_strategies and skep_strategies[node] == "UCB"}
-
 # Initialize tracking metrics
-belief_counts = {agent: {"Believers": [], "Skeptics": [], "Neutrals": [], "Influencers": []} for agent in agent_types.keys()}
+belief_counts = {"Believers": [len(agent_types["Believer"])],
+                 "Skeptics": [len(agent_types["Skeptic"])],
+                 "Neutrals": [len(agent_types["Neutral"])],
+                 "Influencers": [len(agent_types["Influencer"])],
+                 "Rewards_Skeptic": [0],
+                 "Rewards_Believer": [0]}
 
-# Function to dynamically rewire edges at each step
-def rewire_network(G, prob):
-    edges = list(G.edges())
-    for edge in edges:
-        if random.random() < prob:
-            G.remove_edge(*edge)
-            new_node = random.choice(list(G.nodes()))
-            if new_node != edge[0]:
-                G.add_edge(edge[0], new_node)
+# Streamlit visualization setup
+st.sidebar.write("Click the button below to start the simulation.")
+if st.sidebar.button("Start Simulation"):
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    network_plot = st.empty()
+    graph_plot = st.empty()
 
-# RL Agents Implementation
-def apply_rl_agents():
-    for t in range(params["steps"]):
-        rewire_network(G, rewiring_prob)  # Rewire network dynamically
+    for t in range(steps):
+        reward_skeptic = rewards["Skeptic"][-1]
+        reward_believer = rewards["Believer"][-1]
 
-        for agent_type, agent_nodes in agent_types.items():
-            for node in agent_nodes.keys():
-                neighbors = list(G.neighbors(node))
-                if not neighbors:
-                    continue
-                target = random.choice(neighbors)
+        for node in list(G.nodes()):
+            neighbors = list(G.neighbors(node))
+            if not neighbors:
+                continue
+            target = random.choice(neighbors)
 
-                if node_colors[node] == "red" and node_colors[target] == "gray":
-                    if random.random() < params["misinformation_spread_prob"]:
-                        node_colors[target] = "red"
-                elif node_colors[node] == "blue" and node_colors[target] == "red":
-                    if node in skep_strategies:
-                        if skep_strategies[node] == "UCB":
-                            success_prob = ucb_success_rates.get(node, 0.5)  # Use stored success rate
-                            if random.random() < success_prob:
-                                node_colors[target] = "gray"
-                                ucb_success_rates[node] = (ucb_success_rates[node] + 1) / 2  # Update success probability
-                        elif skep_strategies[node] == "E-Greedy":
-                            if random.random() < params["epsilon"]:
-                                target = random.choice(neighbors)  # Explore new target
-                            if random.random() < params["fact_check_prob"]:
-                                node_colors[target] = "gray"
+            if node in agent_types["Believer"]:  # Believers applying selected strategy
+                if believer_algorithm == "E-Greedy" and random.random() < epsilon:
+                    target = random.choice(neighbors)  # Explore new target
+                if believer_algorithm == "UCB":
+                    if random.random() < misinformation_spread_prob:
+                        target = max(neighbors, key=lambda n: len(list(G.neighbors(n))), default=target)
+                if random.random() < misinformation_spread_prob and target in agent_types["Neutral"]:
+                    agent_types["Believer"].add(target)
+                    agent_types["Neutral"].remove(target)
+                    node_colors[target] = "red"
+                    reward_believer += 1
+                elif target in agent_types["Influencer"]:
+                    agent_types["Believer"].add(target)
+                    node_colors[target] = "red"
+                    reward_believer += 2
 
-            belief_counts[agent_type]["Believers"].append(sum(1 for n in agent_nodes if node_colors[n] == "red"))
-            belief_counts[agent_type]["Skeptics"].append(sum(1 for n in agent_nodes if node_colors[n] == "blue"))
-            belief_counts[agent_type]["Neutrals"].append(sum(1 for n in agent_nodes if node_colors[n] == "gray"))
-            belief_counts[agent_type]["Influencers"].append(sum(1 for n in agent_nodes if node_colors[n] == "green"))
+            elif node in agent_types["Skeptic"]:  # Skeptics applying selected strategy
+                if skep_strategies.get(node, "UCB") == "UCB":  # UCB Strategy
+                    if random.random() < fact_check_prob and target in agent_types["Believer"]:
+                        agent_types["Skeptic"].add(target)
+                        agent_types["Believer"].remove(target)
+                        node_colors[target] = "blue"
+                        reward_skeptic += 1
+                elif skep_strategies.get(node, "UCB") == "Thompson Sampling":  # Thompson Sampling Strategy
+                    if random.betavariate(2, 5) > 0.5 and target in agent_types["Believer"]:
+                        agent_types["Skeptic"].add(target)
+                        agent_types["Believer"].remove(target)
+                        node_colors[target] = "blue"
+                        reward_skeptic += 1
+                elif skep_strategies.get(node, "UCB") == "Random":  # Random Strategy
+                    if random.random() < 0.5 and target in agent_types["Believer"]:
+                        agent_types["Skeptic"].add(target)
+                        agent_types["Believer"].remove(target)
+                        node_colors[target] = "blue"
+                        reward_skeptic += 1
 
-apply_rl_agents()
+                # Skeptic conversion back to Neutral
+                if random.random() < skeptic_conversion_prob:
+                    agent_types["Skeptic"].remove(node)
+                    agent_types["Neutral"].add(node)
+                    node_colors[node] = "gray"
 
-# Visualization
-fig, axs = plt.subplots(4, 4, figsize=(20, 20))
+        rewards["Believer"].append(reward_believer)
+        rewards["Skeptic"].append(reward_skeptic)
 
-# Plot graphs for each agent type and belief type with 95% confidence intervals
-for i, agent_type in enumerate(agent_types.keys()):
-    for j, belief_type in enumerate(["Believers", "Skeptics", "Neutrals", "Influencers"]):
-        ax = axs[i, j]
-        data = np.array(belief_counts[agent_type][belief_type])
-        if len(data) > 1:
-            mean = np.mean(data, axis=0)
-            std_error = stats.sem(data, axis=0)
-            confidence_interval = 1.96 * std_error
-            ax.plot(range(len(data)), data, label=f"{agent_type} - {belief_type}")
-            ax.fill_between(range(len(data)), data - confidence_interval, data + confidence_interval, color='gray', alpha=0.2)
-        else:
-            ax.plot(range(len(data)), data, label=f"{agent_type} - {belief_type}")
-        ax.set_title(f"{agent_type} - {belief_type} Over Time")
-        ax.set_xlabel("Simulation Steps")
-        ax.set_ylabel("Count")
-        ax.legend()
+        belief_counts["Believers"].append(len(agent_types["Believer"]))
+        belief_counts["Skeptics"].append(len(agent_types["Skeptic"]))
+        belief_counts["Neutrals"].append(len(agent_types["Neutral"]))
+        belief_counts["Influencers"].append(len(agent_types["Influencer"]))
 
-plt.tight_layout()
-plt.show()
+        progress_bar.progress((t + 1) / steps)
+        status_text.text(f"Simulation Step {t + 1}/{steps}")
+        if t % 10 == 0:
+            fig, ax = plt.subplots(figsize=(12, 10))
+            nx.draw(G, pos=network_pos, node_color=[node_colors[n] for n in G.nodes()], node_size=[node_sizes[n] for n in G.nodes()], edge_color="lightgray", with_labels=False)
+            network_plot.pyplot(fig)
 
-# Plot the Final Dynamic Network
-plt.figure(figsize=(10, 8))
-nx.draw(G, pos=nx.spring_layout(G), node_color=[node_colors[n] for n in G.nodes()], node_size=[node_sizes[n] for n in G.nodes()], edge_color="lightgray", with_labels=False)
-plt.title("Final State of the Dynamic Network")
-plt.show()
+            fig, axs = plt.subplots(1, 3, figsize=(18, 6))
+            axs[0].plot(range(len(belief_counts["Believers"])), belief_counts["Believers"], label="Believers", color="red")
+            axs[0].plot(range(len(belief_counts["Skeptics"])), belief_counts["Skeptics"], label="Skeptics", color="blue")
+            axs[0].set_title("Believers vs. Skeptics Over Time")
+            axs[0].legend()
+
+            axs[1].plot(range(len(belief_counts["Neutrals"])), belief_counts["Neutrals"], label="Neutrals", color="gray")
+            axs[1].set_title("Neutral Count Over Time")
+            axs[1].legend()
+
+            graph_plot.pyplot(fig)
+    st.success("Simulation Complete")
