@@ -332,8 +332,8 @@ if len(agent_types["Neutral"]) > 0:
                     ucb_scores[n] = ucb_values[n] + np.sqrt(2 * np.log(sum(ucb_counts.values())) / ucb_counts[n])
 
 # Select the neighbor with the highest UCB score
-            target = max(ucb_scores, key=ucb_scores.get)
-            target = max(ucb_scores, key=ucb_scores.get)  # Select neighbor with highest UCB score
+                target = max(ucb_scores, key=ucb_scores.get)
+                target = max(ucb_scores, key=ucb_scores.get)  # Select neighbor with highest UCB score
         
         # **Updated: Ensure Proper Belief Transition**
             if target in agent_types["Neutral"]:
