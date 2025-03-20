@@ -282,14 +282,14 @@ if st.sidebar.button("Start Simulation"):
                 elif node in agent_types["Skeptic"]:
                     agent_types["Skeptic"].add(target)
                     agent_types["Neutral"].remove(target)
-                     node_colors[target] = "blue"
+                    node_colors[target] = "blue"
 
             # **Influencer-Specific Influence Spread**
                 if node in agent_types["Influencer"]:
                     for neighbor in neighbors:
                      if neighbor in agent_types["Neutral"]:
                         agent_types["Believer"].add(neighbor)
-                         agent_types["Neutral"].remove(neighbor)
+                        agent_types["Neutral"].remove(neighbor)
                         node_colors[neighbor] = "red"
 
             # **UCB Value Update**
