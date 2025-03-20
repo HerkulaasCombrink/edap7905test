@@ -274,31 +274,31 @@ if st.sidebar.button("Start Simulation"):
             target = max(ucb_scores, key=ucb_scores.get)  # Select best neighbor to influence
 
             # **Influence Spreading Logic**
-                if target in agent_types["Neutral"]:
-                    if node in agent_types["Believer"]:
-                        agent_types["Believer"].add(target)
-                        agent_types["Neutral"].remove(target)
-                        node_colors[target] = "red"
-                    elif node in agent_types["Skeptic"]:
-                        agent_types["Skeptic"].add(target)
-                        agent_types["Neutral"].remove(target)
-                        node_colors[target] = "blue"
+            if target in agent_types["Neutral"]:
+                if node in agent_types["Believer"]:
+                    agent_types["Believer"].add(target)
+                    agent_types["Neutral"].remove(target)
+                     node_colors[target] = "red"
+                 elif node in agent_types["Skeptic"]:
+                    agent_types["Skeptic"].add(target)
+                    agent_types["Neutral"].remove(target)
+                     node_colors[target] = "blue"
 
             # **Influencer-Specific Influence Spread**
                 if node in agent_types["Influencer"]:
                     for neighbor in neighbors:
-                        if neighbor in agent_types["Neutral"]:
-                            agent_types["Believer"].add(neighbor)
-                            agent_types["Neutral"].remove(neighbor)
-                            node_colors[neighbor] = "red"
+                     if neighbor in agent_types["Neutral"]:
+                        agent_types["Believer"].add(neighbor)
+                         agent_types["Neutral"].remove(neighbor)
+                        node_colors[neighbor] = "red"
 
             # **UCB Value Update**
-                reward = 1 if target in agent_types["Believer"] else 0  # Reward when a neutral becomes a believer
-                ucb_values[target] = ((ucb_values[target] * ucb_counts[target]) + reward) / (ucb_counts[target] + 1)
-                ucb_counts[target] += 1  # Increase count after update
+                        reward = 1 if target in agent_types["Believer"] else 0  # Reward when a neutral becomes a believer
+                        ucb_values[target] = ((ucb_values[target] * ucb_counts[target]) + reward) / (ucb_counts[target] + 1)
+                        ucb_counts[target] += 1  # Increase count after update
     
         # Apply UCB to select a neighbor to influence
-            ucb_scores = {}
+                        ucb_scores = {}
             for n in neighbors:
                 if ucb_counts[n] == 0:  # Prevent division by zero
                     ucb_counts[n] = 1
