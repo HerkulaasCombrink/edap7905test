@@ -1,5 +1,3 @@
-#an interesting update
-
 #Network dynamic code
 
 import streamlit as st
@@ -95,25 +93,17 @@ if st.sidebar.button("Start Simulation"):
             fact_check_effect = (beta / lambda_factor) * fact_check_prob
 
             # Compute SSI for this node
-            stress_variation = random.uniform(-0.05, 0.05)  # Adds small variation in stress
-            SSI[node] = max(0, min(1, SSI[node] + propagation_effect - fact_check_effect + misinformation_effect + stress_variation))
+            SSI[node] = max(0, min(1, SSI[node] + propagation_effect - fact_check_effect + misinformation_effect))
 
             if neighbors:
                 target = random.choice(neighbors)  # Always set target
 
-                if target in agent_types["Neutral"]:
-                    if random.random() < misinformation_spread_prob:
-                        agent_types["Believer"].add(target)
-                        agent_types["Neutral"].discard(target)
-                        node_colors[target] = "red"
-                        reward_believer += 1
-                        SSI[target] += misinformation_effect * random.uniform(0.8, 1.2)  # Adds variability to stress
-                elif random.random() < fact_check_prob:  # Skeptics can prevent conversion
-                        agent_types["Skeptic"].add(target)
-                        agent_types["Neutral"].discard(target)
-                        node_colors[target] = "blue"
-                        reward_skeptic += 1
-                        SSI[target] -= fact_check_effect  # Reduce stress when fact-checking succeeds
+                if target in agent_types["Neutral"] and random.random() < misinformation_spread_prob:
+                    agent_types["Believer"].add(target)
+                    agent_types["Neutral"].discard(target)
+                    node_colors[target] = "red"
+                    reward_believer += 1
+                    SSI[target] += misinformation_effect  # Spread stress
 
                 elif target in agent_types["Skeptic"] and random.random() < (misinformation_spread_prob * 0.5):
                     agent_types["Believer"].add(target)
@@ -141,13 +131,15 @@ if st.sidebar.button("Start Simulation"):
 
             elif node in agent_types["Skeptic"]:  # Skeptics applying selected strategy
                 if skep_strategies.get(node, "UCB") == "UCB":
-                    if target in agent_types["Believer"] and random.random() < fact_check_prob * 1.5:  # Higher chance to convert
+                    if target in agent_types["Believer"]:
                         agent_types["Believer"].remove(target)
                         agent_types["Skeptic"].add(target)
-                        skep_strategies[target] = skeptic_algorithm  # Assign strategy to new skeptic
-                        node_colors[target] = "blue"
+                        agent_types["Neutral"].discard(target)  # Ensure it's not in neutral
+                        agent_types["Influencer"].discard(target)  # Ensure it's not an influencer
+                        skep_strategies[target] = "UCB"
+                        node_colors[target] = "blue"  # Update visualization
                         reward_skeptic += 1
-                        SSI[target] = max(0, SSI[target] - (fact_check_effect * random.uniform(0.8, 1.2)))  # Reduce stress with deviation
+                        SSI[target] -= fact_check_effect  # Reduce stress for successful fact-checking
 
                 elif skep_strategies.get(node, "UCB") == "Thompson Sampling":
                     if random.betavariate(2, 5) > 0.5 and target in agent_types["Believer"]:
@@ -192,20 +184,20 @@ if st.sidebar.button("Start Simulation"):
 
         if t % 10 == 0:  # Update visualization every 10 steps
             fig, ax = plt.subplots(figsize=(12, 10))
-
-            for node in G.nodes():
-                if node in agent_types["Believer"]:
-                    node_colors[node] = "red"
-                elif node in agent_types["Skeptic"]:
-                    node_colors[node] = "blue"
-                elif node in agent_types["Influencer"]:
-                    node_colors[node] = "green"
+            node_colors_updated = []
+            for n in G.nodes():
+                if n in agent_types["Believer"]:
+                    node_colors_updated.append("red")
+                elif n in agent_types["Skeptic"]:
+                    node_colors_updated.append("blue")
+                elif n in agent_types["Influencer"]:
+                    node_colors_updated.append("green")
                 else:
-                    node_colors[node] = "gray"  # Neutral
+                    node_colors_updated.append("gray")  # Neutral
 
             fig, ax = plt.subplots(figsize=(12, 10))
             nx.draw(G, pos=network_pos,
-                node_color=[node_colors[n] for n in G.nodes()],
+                node_color=node_colors_updated,
                 node_size=[100 + 300 * SSI[n] for n in G.nodes()],
                 edge_color="gray", with_labels=False)
             network_plot.pyplot(fig)
