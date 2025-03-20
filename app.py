@@ -130,11 +130,14 @@ if st.sidebar.button("Start Simulation"):
             stress_factor = abs(believers_count - skeptics_count) / max(1, N)  
 
     # Choose a target neighbor for influence
-            neutral_neighbors = [n for n in neighbors if n in agent_types["Neutral"]]
-            if neutral_neighbors:
-                target = random.choice(neutral_neighbors)  # Prioritize neutrals first
+            if random.random() < 0.8:  # 80% chance to prioritize neutrals
+                neutral_neighbors = [n for n in neighbors if n in agent_types["Neutral"]]
+                if neutral_neighbors:
+                    target = random.choice(neutral_neighbors)
+                else:
+                    target = random.choice(neighbors)
             else:
-                target = random.choice(neighbors)  # If no neutrals, pick anyone  
+                target = random.choice(neighbors)  # 20% chance to engage with non-neutrals  
 
     # Convert misfluencers easily
             if node in agent_types["Believer"] and target in agent_types["Influencer"]:
@@ -246,15 +249,19 @@ if st.sidebar.button("Start Simulation"):
                             agent_types["Neutral"].remove(target)
                             node_colors[target] = "blue"
                 elif target in agent_types["Skeptic"] and node in agent_types["Believer"]:
-                    if random.random() < skeptic_conversion_prob:
+                    if skeptic_duration[target] > 3 and random.random() < skeptic_conversion_prob * (1 - skeptic_resistance_factor):
                         agent_types["Believer"].add(target)
                         agent_types["Skeptic"].remove(target)
                         node_colors[target] = "red"
-                elif target in agent_types["Believer"] and node in agent_types["Skeptic"]:
-                    if random.random() < misinformation_spread_prob:
+                        skeptic_duration[target] = 0  # Reset conversion cooldown
+
+                # Skeptics converting believers with momentum penalty
+                elif node in agent_types["Skeptic"] and target in agent_types["Believer"]:
+                    if random.random() < skeptic_conversion_prob * (1 + skeptic_resistance_factor):
                         agent_types["Skeptic"].add(target)
                         agent_types["Believer"].remove(target)
                         node_colors[target] = "blue"
+                        skeptic_duration[target] += 2  # Increase resistance time
             # **Influencer Impacts Multiple Nodes**
                 if node in agent_types["Influencer"]:
                     for neighbor in neighbors:
@@ -337,9 +344,10 @@ if st.sidebar.button("Start Simulation"):
         if node in agent_types["Influencer"]:
             for neighbor in neighbors:
                 if neighbor in agent_types["Neutral"]:
-                    agent_types["Believer"].add(neighbor)
-                    agent_types["Neutral"].remove(neighbor)
-                    node_colors[neighbor] = "red"
+                    if random.random() < 0.8:  # Influencers have an 80% chance to convert a neutral
+                        agent_types["Believer"].add(neighbor)
+                        agent_types["Neutral"].remove(neighbor)
+                        node_colors[neighbor] = "red"
 
         # **Update UCB values**
         reward = 1 if target in agent_types["Believer"] else 0  # Reward when a neutral becomes a believer
@@ -368,7 +376,13 @@ if st.sidebar.button("Start Simulation"):
                 node_colors[target] = "blue"
 
                 # Update UCB values
-        reward = 1 if target in agent_types["Believer"] else 0  # Reward when a neutral becomes a believer
+        if target in agent_types["Believer"]:
+            reward = 1.5 if node in agent_types["Influencer"] else 1  # Influencers get higher rewards
+        elif target in agent_types["Skeptic"]:
+            reward = 1.5 if node in agent_types["Influencer"] else 1
+        elif target in agent_types["Neutral"]:  # Large reward for converting a neutral
+            reward = 2 if node in agent_types["Influencer"] else 1.5
+
         ucb_values[target] = ((ucb_values[target] * ucb_counts[target]) + reward) / (ucb_counts[target] + 1)
         ucb_counts[target] += 1  # Increase count after update
 
