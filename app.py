@@ -264,14 +264,7 @@ if st.sidebar.button("Start Simulation"):
 
     
     # Read the contents back for Streamlit to download
-    with open(tmp_pdf_path, "rb") as f:
-        st.download_button(
-            label="📄 Download Full PDF Report",
-            data=f.read(),
-            file_name="misinformation_simulation_report.pdf",
-            mime="application/pdf",
-            key="pdf_download_button"
-        )
+
     
     # Optional: clean up the temp file
     import os
