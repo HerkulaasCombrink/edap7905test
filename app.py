@@ -261,15 +261,22 @@ if st.sidebar.button("Start Simulation"):
     axs[2].legend()
     
     # Save plot to a BytesIO buffer
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_file:
-        fig.savefig(tmp_file.name, format="png")
-        tmp_file_path = tmp_file.name
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf_file:
+        pdf.output(tmp_pdf_file.name)
+        tmp_pdf_path = tmp_pdf_file.name
     
-    # Insert into the PDF using the temporary file
-#    pdf.image(tmp_file_path, x=10, y=None, w=180)
+    # Read the contents back for Streamlit to download
+    with open(tmp_pdf_path, "rb") as f:
+        st.download_button(
+            label="📄 Download Full PDF Report",
+            data=f.read(),
+            file_name="misinformation_simulation_report.pdf",
+            mime="application/pdf"
+        )
     
-    # Optionally, clean up the temporary file
-    os.remove(tmp_file_path)
+    # Optional: clean up the temp file
+    import os
+    os.remove(tmp_pdf_path)
     st.subheader("Simulation Parameters Used")
     params_df = pd.DataFrame({
         "Parameter": [
