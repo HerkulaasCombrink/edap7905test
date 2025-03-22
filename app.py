@@ -232,29 +232,29 @@ if st.sidebar.button("Start Simulation"):
         
             graph_plot.pyplot(fig)
             # Show the parameters used in the simulation
-            st.subheader("Simulation Parameters Used")
-            params_df = pd.DataFrame({
-                "Parameter": [
-                    "Number of Agents",
-                    "Misinformation Spread Probability",
-                    "Fact-Checking Probability",
-                    "Skeptic Conversion Probability",
-                    "Epsilon (E-Greedy)",
-                    "Simulation Steps",
-                    "Believer Strategy",
-                    "Skeptic Strategy"
-                ],
-                "Value": [
-                    N,
-                    misinformation_spread_prob,
-                    fact_check_prob,
-                    skeptic_conversion_prob,
-                    epsilon,
-                    steps,
-                    believer_algorithm,
-                    skeptic_algorithm
-                ]
-            })
 
-            st.table(params_df)
     st.success("Simulation Complete")
+    st.subheader("Simulation Parameters Used")
+    params_df = pd.DataFrame({
+        "Parameter": [
+            "Number of Agents",
+            "Misinformation Spread Probability",
+            "Fact-Checking Probability",
+            "Skeptic Conversion Probability",
+            "Epsilon (E-Greedy)",
+            "Simulation Steps",
+            "Believer Strategy",
+            "Skeptic Strategy"
+        ],
+        "Value": [
+            N,
+            misinformation_spread_prob,
+            fact_check_prob,
+            skeptic_conversion_prob,
+            epsilon,
+            steps,
+            believer_algorithm,
+            skeptic_algorithm
+        ]
+    })
+    st.table(params_df)
