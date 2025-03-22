@@ -258,3 +258,21 @@ if st.sidebar.button("Start Simulation"):
         ]
     })
     st.table(params_df)
+    results_df = pd.DataFrame({
+        "Step": list(range(len(belief_counts["Believers"]))),
+        "Believers": belief_counts["Believers"],
+        "Skeptics": belief_counts["Skeptics"],
+        "Neutrals": belief_counts["Neutrals"],
+        "Influencers": belief_counts["Influencers"],
+        "Reward_Believer": rewards["Believer"],
+        "Reward_Skeptic": rewards["Skeptic"]
+    })
+    
+    csv = results_df.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        label="📥 Download Simulation Results as CSV",
+        data=csv,
+        file_name="misinformation_simulation_results.csv",
+        mime="text/csv"
+    )
+
