@@ -266,7 +266,7 @@ if st.sidebar.button("Start Simulation"):
         tmp_file_path = tmp_file.name
     
     # Insert into the PDF using the temporary file
-    pdf.image(tmp_file_path, x=10, y=None, w=180)
+#    pdf.image(tmp_file_path, x=10, y=None, w=180)
     
     # Optionally, clean up the temporary file
     os.remove(tmp_file_path)
