@@ -318,6 +318,11 @@ if st.sidebar.button("Start Simulation"):
         file_name="misinformation_simulation_results.csv",
         mime="text/csv"
     )
+    # Save plot to file (must be saved to disk for FPDF)
+    plot_path = "final_plot.png"
+    fig.savefig(plot_path, format="png")
+    
+    # Create PDF and build content
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
@@ -338,19 +343,24 @@ if st.sidebar.button("Start Simulation"):
     pdf.cell(0, 10, f"Neutrals: {belief_counts['Neutrals'][-1]}", ln=True)
     pdf.cell(0, 10, f"Influencers: {belief_counts['Influencers'][-1]}", ln=True)
     
-    # Insert plot image
+    # Add plot image to PDF
     pdf.ln(5)
-    pdf.image(buf, x=10, y=None, w=180)
-#    buf.seek(0)  # ensure the buffer is at the beginning
-#    pdf.image(buf, x=10, y=None, w=180)
-#    buf.close()
-    # Output PDF to bytes
-    plt.savefig("plot.png", format="png")
-    pdf.output(pdf_output)
-    pdf_output.seek(0)
-    st.download_button(
-    label="📄 Download Full PDF Report",
-    data=pdf_output,
-    file_name="misinformation_simulation_report.pdf",
-    mime="application/pdf"
-    )
+    pdf.image(plot_path, x=10, y=None, w=180)
+    
+    # Save PDF to a temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf_file:
+        pdf.output(tmp_pdf_file.name)
+        tmp_pdf_path = tmp_pdf_file.name
+    
+    # Provide the PDF for download
+    with open(tmp_pdf_path, "rb") as f:
+        st.download_button(
+            label="📄 Download Full PDF Report",
+            data=f.read(),
+            file_name="misinformation_simulation_report.pdf",
+            mime="application/pdf"
+        )
+    
+    # Clean up
+    os.remove(tmp_pdf_path)
+    os.remove(plot_path)
