@@ -10,6 +10,9 @@ import time
 from fpdf import FPDF
 import io
 from PIL import Image
+import tempfile
+import os
+
 # Streamlit Interface Initialization Section 2
 st.title("Misinformation Dynamic Network Simulation")
 st.sidebar.header("Simulation Parameters")
@@ -258,12 +261,15 @@ if st.sidebar.button("Start Simulation"):
     axs[2].legend()
     
     # Save plot to a BytesIO buffer
-    buf = io.BytesIO()
-    buf.name = "plot.png"  # FPDF requires .name to detect image type
-    fig.savefig(buf, format="PNG")
-    buf.seek(0)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_file:
+        fig.savefig(tmp_file.name, format="png")
+        tmp_file_path = tmp_file.name
     
-    buf.close()
+    # Insert into the PDF using the temporary file
+    pdf.image(tmp_file_path, x=10, y=None, w=180)
+    
+    # Optionally, clean up the temporary file
+    os.remove(tmp_file_path)
     st.subheader("Simulation Parameters Used")
     params_df = pd.DataFrame({
         "Parameter": [
