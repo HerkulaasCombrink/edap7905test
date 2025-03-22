@@ -262,7 +262,7 @@ if st.sidebar.button("Start Simulation"):
     
     # Save plot to a BytesIO buffer
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf_file:
-        pdf.output(tmp_pdf_file.name)
+#        pdf.output(tmp_pdf_file.name)
         tmp_pdf_path = tmp_pdf_file.name
     
     # Read the contents back for Streamlit to download
