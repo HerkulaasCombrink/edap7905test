@@ -171,8 +171,8 @@ if st.sidebar.button("Start Simulation"):
             fig, axs = plt.subplots(1, 3, figsize=(18, 6))
     
         # Believers vs Skeptics
-            axs[0].plot(range(len(belief_counts["Believers"])), belief_counts["Believers"], label="Believers", color="red")
-            axs[0].plot(range(len(belief_counts["Skeptics"])), belief_counts["Skeptics"], label="Skeptics", color="blue")
+#            axs[0].plot(range(len(belief_counts["Believers"])), belief_counts["Believers"], label="Believers", color="red")
+#            axs[0].plot(range(len(belief_counts["Skeptics"])), belief_counts["Skeptics"], label="Skeptics", color="blue")
             def compute_ci(data):
                 data = np.array(data)
                 mean = np.cumsum(data) / (np.arange(len(data)) + 1)
