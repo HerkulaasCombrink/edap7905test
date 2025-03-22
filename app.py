@@ -256,5 +256,5 @@ if st.sidebar.button("Start Simulation"):
                 ]
             })
 
-st.table(params_df)
+            st.table(params_df)
     st.success("Simulation Complete")
