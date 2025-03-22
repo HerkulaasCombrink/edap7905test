@@ -304,4 +304,37 @@ if st.sidebar.button("Start Simulation"):
         file_name="misinformation_simulation_results.csv",
         mime="text/csv"
     )
-
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "Misinformation Simulation Report", ln=True)
+    
+    pdf.set_font("Arial", "", 12)
+    pdf.ln(5)
+    pdf.cell(0, 10, "Simulation Parameters:", ln=True)
+    
+    # Parameters table
+    for param, value in zip(params_df["Parameter"], params_df["Value"]):
+        pdf.cell(0, 10, f"{param}: {value}", ln=True)
+    
+    pdf.ln(5)
+    pdf.cell(0, 10, "Final Belief Counts:", ln=True)
+    pdf.cell(0, 10, f"Believers: {belief_counts['Believers'][-1]}", ln=True)
+    pdf.cell(0, 10, f"Skeptics: {belief_counts['Skeptics'][-1]}", ln=True)
+    pdf.cell(0, 10, f"Neutrals: {belief_counts['Neutrals'][-1]}", ln=True)
+    pdf.cell(0, 10, f"Influencers: {belief_counts['Influencers'][-1]}", ln=True)
+    
+    # Insert plot image
+    pdf.ln(5)
+    pdf.image(img, x=10, y=None, w=180)
+    
+    # Output PDF to bytes
+    pdf_output = io.BytesIO()
+    pdf.output(pdf_output)
+    pdf_output.seek(0)
+    st.download_button(
+    label="📄 Download Full PDF Report",
+    data=pdf_output,
+    file_name="misinformation_simulation_report.pdf",
+    mime="application/pdf"
+    )
