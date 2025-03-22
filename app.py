@@ -41,7 +41,7 @@ for node in G.nodes():
     node_colors[node] = {"Believer": "red", "Skeptic": "blue", "Neutral": "gray", "Influencer": "green"}[belief]
     node_sizes[node] = {"Believer": 100, "Skeptic": 100, "Neutral": 80, "Influencer": 300}[belief]
 
-# Metric Initialization Section 4
+
 belief_counts = {"Believers": [len(agent_types["Believer"])],
                  "Skeptics": [len(agent_types["Skeptic"])],
                  "Neutrals": [len(agent_types["Neutral"])],
@@ -144,7 +144,7 @@ if st.sidebar.button("Start Simulation"):
                     agent_types["Neutral"].add(node)
                     node_colors[node] = "gray"
 
-# ✅ These updates happen for **every step**
+#  These updates happen for **every step**
         rewards["Believer"].append(reward_believer)
         rewards["Skeptic"].append(reward_skeptic)
         belief_counts["Believers"].append(len(agent_types["Believer"]))
@@ -155,7 +155,7 @@ if st.sidebar.button("Start Simulation"):
         progress_bar.progress((t + 1) / steps)
         status_text.text(f"Simulation Step {t + 1}/{steps}")
     
-    # ✅ Only render plots every 10 steps
+    #  Only render plots every 10 steps
         if t % 10 == 0:
         # Network Graph
             fig, ax = plt.subplots(figsize=(12, 10))
@@ -169,10 +169,6 @@ if st.sidebar.button("Start Simulation"):
     
         # Line Graphs for Beliefs & Rewards
             fig, axs = plt.subplots(1, 3, figsize=(18, 6))
-    
-        # Believers vs Skeptics
-#            axs[0].plot(range(len(belief_counts["Believers"])), belief_counts["Believers"], label="Believers", color="red")
-#            axs[0].plot(range(len(belief_counts["Skeptics"])), belief_counts["Skeptics"], label="Skeptics", color="blue")
             def compute_ci(data):
                 data = np.array(data)
                 mean = np.cumsum(data) / (np.arange(len(data)) + 1)
