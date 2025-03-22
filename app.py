@@ -173,11 +173,34 @@ if st.sidebar.button("Start Simulation"):
         # Believers vs Skeptics
             axs[0].plot(range(len(belief_counts["Believers"])), belief_counts["Believers"], label="Believers", color="red")
             axs[0].plot(range(len(belief_counts["Skeptics"])), belief_counts["Skeptics"], label="Skeptics", color="blue")
+            def compute_ci(data):
+                data = np.array(data)
+                mean = np.cumsum(data) / (np.arange(len(data)) + 1)
+                std_err = [np.std(data[:i+1]) / np.sqrt(i+1) if i > 0 else 0 for i in range(len(data))]
+                ci = 1.645 * np.array(std_err)
+                return mean, ci
+            
+            believers = belief_counts["Believers"]
+            skeptics = belief_counts["Skeptics"]
+            x = range(len(believers))
+            
+            bel_mean, bel_ci = compute_ci(believers)
+            skep_mean, skep_ci = compute_ci(skeptics)
+            
+            axs[0].plot(x, bel_mean, label="Believers", color="red")
+            axs[0].fill_between(x, bel_mean - bel_ci, bel_mean + bel_ci, color="red", alpha=0.3)
+            
+            axs[0].plot(x, skep_mean, label="Skeptics", color="blue")
+            axs[0].fill_between(x, skep_mean - skep_ci, skep_mean + skep_ci, color="blue", alpha=0.3)
             axs[0].set_title("Believers vs. Skeptics Over Time")
             axs[0].legend()
     
         # Neutrals over time
-            axs[1].plot(range(len(belief_counts["Neutrals"])), belief_counts["Neutrals"], label="Neutrals", color="gray")
+            neutrals = belief_counts["Neutrals"]
+            neu_mean, neu_ci = compute_ci(neutrals)
+            axs[1].plot(x, neu_mean, label="Neutrals", color="gray")
+            axs[1].fill_between(x, neu_mean - neu_ci, neu_mean + neu_ci, color="gray", alpha=0.3)
+
             axs[1].set_title("Neutral Count Over Time")
             axs[1].legend()
     
