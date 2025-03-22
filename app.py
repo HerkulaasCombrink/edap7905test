@@ -327,8 +327,8 @@ if st.sidebar.button("Start Simulation"):
     
     # Insert plot image
     pdf.ln(5)
-
-    buf.seek(0)  # ensure the buffer is at the beginning
+    pdf.image(buf, x=10, y=None, w=180)
+    #buf.seek(0)  # ensure the buffer is at the beginning
     pdf.image(buf, x=10, y=None, w=180)
     buf.close()
     # Output PDF to bytes
