@@ -323,6 +323,7 @@ if st.sidebar.button("Start Simulation"):
     fig.savefig(plot_path, format="png")
     
     # Create PDF and build content
+    # ✅ After all the PDF content has been added
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
@@ -332,7 +333,7 @@ if st.sidebar.button("Start Simulation"):
     pdf.ln(5)
     pdf.cell(0, 10, "Simulation Parameters:", ln=True)
     
-    # Parameters table
+    # Add parameters
     for param, value in zip(params_df["Parameter"], params_df["Value"]):
         pdf.cell(0, 10, f"{param}: {value}", ln=True)
     
@@ -343,16 +344,17 @@ if st.sidebar.button("Start Simulation"):
     pdf.cell(0, 10, f"Neutrals: {belief_counts['Neutrals'][-1]}", ln=True)
     pdf.cell(0, 10, f"Influencers: {belief_counts['Influencers'][-1]}", ln=True)
     
-    # Add plot image to PDF
-    pdf.ln(5)
-    pdf.image(plot_path, x=10, y=None, w=180)
+    # Save final figure as image
+    img_path = "plot_final.png"
+    fig.savefig(img_path, format="png")
+    pdf.image(img_path, x=10, y=None, w=180)
     
-    # Save PDF to a temporary file
+    # ✅ Now write PDF to temporary file
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf_file:
         pdf.output(tmp_pdf_file.name)
         tmp_pdf_path = tmp_pdf_file.name
     
-    # Provide the PDF for download
+    # ✅ Read and serve the PDF to the user
     with open(tmp_pdf_path, "rb") as f:
         st.download_button(
             label="📄 Download Full PDF Report",
@@ -362,6 +364,6 @@ if st.sidebar.button("Start Simulation"):
             key="pdf_download_button"
         )
     
-    # Clean up
+    # ✅ Optional cleanup
     os.remove(tmp_pdf_path)
     os.remove(plot_path)
