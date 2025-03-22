@@ -149,4 +149,5 @@ if st.sidebar.button("Start Simulation"):
             axs[2].legend()
             axs[2].set_xlabel("Simulation Step")
             axs[2].set_ylabel("Cumulative Reward")
+            graph_plot.pyplot(fig)
     st.success("Simulation Complete")
