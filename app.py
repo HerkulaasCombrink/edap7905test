@@ -80,30 +80,68 @@ if st.sidebar.button("Start Simulation"):
                     agent_types["Believer"].add(target)
                     node_colors[target] = "red"
                     reward_believer += 2
-            elif node in agent_types["Skeptic"]:  # Skeptics applying selected strategy
-                if skep_strategies.get(node, "UCB") == "UCB":  # UCB Strategy
-                    if random.random() < fact_check_prob and target in agent_types["Believer"]:
-                        agent_types["Skeptic"].add(target)
-                        agent_types["Believer"].remove(target)
-                        node_colors[target] = "blue"
-                        reward_skeptic += 1
-                elif skep_strategies.get(node, "UCB") == "Thompson Sampling":  # Thompson Sampling Strategy
-                    if random.betavariate(2, 5) > 0.5 and target in agent_types["Believer"]:
-                        agent_types["Skeptic"].add(target)
-                        agent_types["Believer"].remove(target)
-                        node_colors[target] = "blue"
-                        reward_skeptic += 1
-                elif skep_strategies.get(node, "UCB") == "Random":  # Random Strategy
-                    if random.random() < 0.5 and target in agent_types["Believer"]:
-                        agent_types["Skeptic"].add(target)
-                        agent_types["Believer"].remove(target)
-                        node_colors[target] = "blue"
-                        reward_skeptic += 1
-                # Skeptic conversion back to Neutral
-                if random.random() < skeptic_conversion_prob:
-                    agent_types["Skeptic"].remove(node)
-                    agent_types["Neutral"].add(node)
-                    node_colors[node] = "gray"
+           elif node in agent_types["Skeptic"]:  # Skeptics applying selected strategy
+    strategy = skep_strategies.get(node, "UCB")
+
+    if strategy == "UCB":
+        if random.random() < fact_check_prob:
+            if target in agent_types["Believer"]:
+                agent_types["Skeptic"].add(target)
+                agent_types["Believer"].remove(target)
+                node_colors[target] = "blue"
+                reward_skeptic += 1
+            elif target in agent_types["Influencer"]:
+                agent_types["Skeptic"].add(target)
+                agent_types["Influencer"].remove(target)
+                node_colors[target] = "blue"
+                reward_skeptic += 3  # bonus reward for converting an Influencer
+            elif target in agent_types["Neutral"]:
+                agent_types["Skeptic"].add(target)
+                agent_types["Neutral"].remove(target)
+                node_colors[target] = "blue"
+                reward_skeptic += 0.5
+
+    elif strategy == "Thompson Sampling":
+        if random.betavariate(2, 5) > 0.5:
+            if target in agent_types["Believer"]:
+                agent_types["Skeptic"].add(target)
+                agent_types["Believer"].remove(target)
+                node_colors[target] = "blue"
+                reward_skeptic += 1
+            elif target in agent_types["Influencer"]:
+                agent_types["Skeptic"].add(target)
+                agent_types["Influencer"].remove(target)
+                node_colors[target] = "blue"
+                reward_skeptic += 3
+            elif target in agent_types["Neutral"]:
+                agent_types["Skeptic"].add(target)
+                agent_types["Neutral"].remove(target)
+                node_colors[target] = "blue"
+                reward_skeptic += 0.5
+
+    elif strategy == "Random":
+        if random.random() < 0.5:
+            if target in agent_types["Believer"]:
+                agent_types["Skeptic"].add(target)
+                agent_types["Believer"].remove(target)
+                node_colors[target] = "blue"
+                reward_skeptic += 1
+            elif target in agent_types["Influencer"]:
+                agent_types["Skeptic"].add(target)
+                agent_types["Influencer"].remove(target)
+                node_colors[target] = "blue"
+                reward_skeptic += 3
+            elif target in agent_types["Neutral"]:
+                agent_types["Skeptic"].add(target)
+                agent_types["Neutral"].remove(target)
+                node_colors[target] = "blue"
+                reward_skeptic += 0.5
+
+    # Skeptic conversion back to Neutral
+    if random.random() < skeptic_conversion_prob:
+        agent_types["Skeptic"].remove(node)
+        agent_types["Neutral"].add(node)
+        node_colors[node] = "gray"
         rewards["Believer"].append(reward_believer)
         rewards["Skeptic"].append(reward_skeptic)
         belief_counts["Believers"].append(len(agent_types["Believer"]))
