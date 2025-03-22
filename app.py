@@ -124,5 +124,29 @@ if st.sidebar.button("Start Simulation"):
             axs[1].plot(range(len(belief_counts["Neutrals"])), belief_counts["Neutrals"], label="Neutrals", color="gray")
             axs[1].set_title("Neutral Count Over Time")
             axs[1].legend()
-            graph_plot.pyplot(fig)
+            axs[2].set_title("Cumulative Rewards with 90% Confidence Interval")
+            believer_rewards = rewards["Believer"]
+            skeptic_rewards = rewards["Skeptic"]
+            x = range(len(believer_rewards))
+
+            # Calculate 90% CI (using standard error and z=1.645 for 90% CI)
+            def compute_ci(data):
+                data = np.array(data)
+                mean = np.cumsum(data) / (np.arange(len(data)) + 1)
+                std_err = [np.std(data[:i+1]) / np.sqrt(i+1) if i > 0 else 0 for i in range(len(data))]
+                ci = 1.645 * np.array(std_err)  # z-score for 90%
+                return mean, ci
+
+            believer_mean, believer_ci = compute_ci(believer_rewards)
+            skeptic_mean, skeptic_ci = compute_ci(skeptic_rewards)
+
+            axs[2].plot(x, believer_mean, label="Believer Rewards", color="red")
+            axs[2].fill_between(x, believer_mean - believer_ci, believer_mean + believer_ci, color="red", alpha=0.3)
+
+            axs[2].plot(x, skeptic_mean, label="Skeptic Rewards", color="blue")
+            axs[2].fill_between(x, skeptic_mean - skeptic_ci, skeptic_mean + skeptic_ci, color="blue", alpha=0.3)
+
+            axs[2].legend()
+            axs[2].set_xlabel("Simulation Step")
+            axs[2].set_ylabel("Cumulative Reward")
     st.success("Simulation Complete")
