@@ -8,7 +8,6 @@ bs4
 requests
 xlml
 fpdf
-pil
 image
 #random
 #time
