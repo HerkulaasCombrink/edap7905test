@@ -230,6 +230,37 @@ if st.sidebar.button("Start Simulation"):
             # Show the parameters used in the simulation
 
     st.success("Simulation Complete")
+    # --- Generate the final plot image ---
+    fig, axs = plt.subplots(1, 3, figsize=(18, 6))
+    
+    # Believers vs. Skeptics
+    axs[0].plot(x, bel_mean, label="Believers", color="red")
+    axs[0].fill_between(x, bel_mean - bel_ci, bel_mean + bel_ci, color="red", alpha=0.3)
+    axs[0].plot(x, skep_mean, label="Skeptics", color="blue")
+    axs[0].fill_between(x, skep_mean - skep_ci, skep_mean + skep_ci, color="blue", alpha=0.3)
+    axs[0].set_title("Believers vs. Skeptics")
+    axs[0].legend()
+    
+    # Neutrals
+    axs[1].plot(x, neu_mean, label="Neutrals", color="gray")
+    axs[1].fill_between(x, neu_mean - neu_ci, neu_mean + neu_ci, color="gray", alpha=0.3)
+    axs[1].set_title("Neutrals Over Time")
+    axs[1].legend()
+    
+    # Rewards
+    axs[2].plot(x, believer_mean, label="Believers", color="red")
+    axs[2].fill_between(x, believer_mean - believer_ci, believer_mean + believer_ci, color="red", alpha=0.3)
+    axs[2].plot(x, skeptic_mean, label="Skeptics", color="blue")
+    axs[2].fill_between(x, skeptic_mean - skeptic_ci, skeptic_mean + skeptic_ci, color="blue", alpha=0.3)
+    axs[2].set_title("Cumulative Rewards (90% CI)")
+    axs[2].legend()
+    
+    # Save plot to a BytesIO buffer
+    buf = io.BytesIO()
+    fig.savefig(buf, format="PNG")
+    buf.seek(0)
+    img = Image.open(buf)
+    buf.close()
     st.subheader("Simulation Parameters Used")
     params_df = pd.DataFrame({
         "Parameter": [
