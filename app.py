@@ -319,8 +319,8 @@ if st.sidebar.button("Start Simulation"):
         key="csv_download_button"
     )
     # Save plot to file (must be saved to disk for FPDF)
-    plot_path = "final_plot.png"
-    fig.savefig(plot_path, format="png")
+    image_path = os.path.join(tempfile.gettempdir(), "plot.png")
+    fig.savefig(image_path, format="png")
     
     # Create PDF and build content
     # ✅ After all the PDF content has been added
@@ -343,16 +343,16 @@ if st.sidebar.button("Start Simulation"):
     pdf.cell(0, 10, f"Skeptics: {belief_counts['Skeptics'][-1]}", ln=True)
     pdf.cell(0, 10, f"Neutrals: {belief_counts['Neutrals'][-1]}", ln=True)
     pdf.cell(0, 10, f"Influencers: {belief_counts['Influencers'][-1]}", ln=True)
-    
+    pdf.image(image_path, x=10, w=180)
     # Save final figure as image
     img_path = "plot_final.png"
     fig.savefig(img_path, format="png")
     pdf.image(img_path, x=10, y=None, w=180)
     
     # ✅ Now write PDF to temporary file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf_file:
-        pdf.output(tmp_pdf_file.name)
-        tmp_pdf_path = tmp_pdf_file.name
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
+        pdf.output(tmp_pdf.name)
+        tmp_pdf_path = tmp_pdf.name
     
     # ✅ Read and serve the PDF to the user
     with open(tmp_pdf_path, "rb") as f:
