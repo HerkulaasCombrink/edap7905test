@@ -268,7 +268,7 @@ if st.sidebar.button("Start Simulation"):
     
     # Optional: clean up the temp file
     import os
-    os.remove(tmp_pdf_path)
+#    os.remove(tmp_pdf_path)
     st.subheader("Simulation Parameters Used")
     params_df = pd.DataFrame({
         "Parameter": [
