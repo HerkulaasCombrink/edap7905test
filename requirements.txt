@@ -8,7 +8,9 @@ bs4
 requests
 xlml
 fpdf
-PIL
+io
+pil
+image
 #random
 #time
 #pygame
