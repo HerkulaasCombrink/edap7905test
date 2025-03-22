@@ -31,7 +31,7 @@ skep_strategies = {}  # Store selected skeptic strategy
 agent_types = {"Believer": set(), "Skeptic": set(), "Neutral": set(), "Influencer": set()}
 rewards = {"Skeptic": [0], "Believer": [0]}  # Track cumulative rewards over time
 for node in G.nodes():
-    belief = random.choices(belief_states, weights=[0.4, 0.3, 0.2, 0.1])[0]
+    belief = random.choices(belief_states, weights=[0.4, 0.4, 0.1, 0.1])[0]
     if belief == "Skeptic":
         skep_strategies[node] = skeptic_algorithm  # Assign selected skeptic algorithm
     elif belief == "Believer":
