@@ -259,9 +259,10 @@ if st.sidebar.button("Start Simulation"):
     
     # Save plot to a BytesIO buffer
     buf = io.BytesIO()
+    buf.name = "plot.png"  # FPDF requires .name to detect image type
     fig.savefig(buf, format="PNG")
     buf.seek(0)
-    img = Image.open(buf)
+    pdf.image(buf, x=10, y=None, w=180)
     buf.close()
     st.subheader("Simulation Parameters Used")
     params_df = pd.DataFrame({
