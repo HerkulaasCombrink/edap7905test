@@ -269,7 +269,8 @@ if st.sidebar.button("Start Simulation"):
             label="📄 Download Full PDF Report",
             data=f.read(),
             file_name="misinformation_simulation_report.pdf",
-            mime="application/pdf"
+            mime="application/pdf",
+            key="pdf_download_button"
         )
     
     # Optional: clean up the temp file
@@ -314,7 +315,8 @@ if st.sidebar.button("Start Simulation"):
         label="📥 Download Simulation Results as CSV",
         data=csv,
         file_name="misinformation_simulation_results.csv",
-        mime="text/csv"
+        mime="text/csv",
+        key="csv_download_button"
     )
     # Save plot to file (must be saved to disk for FPDF)
     plot_path = "final_plot.png"
@@ -356,7 +358,8 @@ if st.sidebar.button("Start Simulation"):
             label="📄 Download Full PDF Report",
             data=f.read(),
             file_name="misinformation_simulation_report.pdf",
-            mime="application/pdf"
+            mime="application/pdf",
+            key="pdf_download_button"
         )
     
     # Clean up
