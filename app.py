@@ -140,67 +140,72 @@ if st.sidebar.button("Start Simulation"):
 
     # Skeptic conversion back to Neutral
     if random.random() < skeptic_conversion_prob:
-        agent_types["Skeptic"].remove(node)
-        agent_types["Neutral"].add(node)
-        node_colors[node] = "gray"
+    agent_types["Skeptic"].remove(node)
+    agent_types["Neutral"].add(node)
+    node_colors[node] = "gray"
 
-    # ✅ These updates now run EVERY iteration
-    rewards["Believer"].append(reward_believer)
-    rewards["Skeptic"].append(reward_skeptic)
-    belief_counts["Believers"].append(len(agent_types["Believer"]))
-    belief_counts["Skeptics"].append(len(agent_types["Skeptic"]))
-    belief_counts["Neutrals"].append(len(agent_types["Neutral"]))
-    belief_counts["Influencers"].append(len(agent_types["Influencer"]))
+# ✅ These updates happen for **every step**
+rewards["Believer"].append(reward_believer)
+rewards["Skeptic"].append(reward_skeptic)
+belief_counts["Believers"].append(len(agent_types["Believer"]))
+belief_counts["Skeptics"].append(len(agent_types["Skeptic"]))
+belief_counts["Neutrals"].append(len(agent_types["Neutral"]))
+belief_counts["Influencers"].append(len(agent_types["Influencer"]))
 
-    progress_bar.progress((t + 1) / steps)
-    status_text.text(f"Simulation Step {t + 1}/{steps}")
+progress_bar.progress((t + 1) / steps)
+status_text.text(f"Simulation Step {t + 1}/{steps}")
 
-    if t % 10 == 0:
-        # Draw network
-        fig, ax = plt.subplots(figsize=(12, 10))
-        nx.draw(G, pos=network_pos,
-                node_color=[node_colors[n] for n in G.nodes()],
-                node_size=[node_sizes[n] for n in G.nodes()],
-                edge_color="lightgray", with_labels=False)
-        network_plot.pyplot(fig)
+# ✅ Only render plots every 10 steps
+if t % 10 == 0:
+    # Network Graph
+    fig, ax = plt.subplots(figsize=(12, 10))
+    nx.draw(
+        G, pos=network_pos,
+        node_color=[node_colors[n] for n in G.nodes()],
+        node_size=[node_sizes[n] for n in G.nodes()],
+        edge_color="lightgray", with_labels=False
+    )
+    network_plot.pyplot(fig)
 
-        # Subplots (beliefs and rewards)
-        fig, axs = plt.subplots(1, 3, figsize=(18, 6))
+    # Line Graphs for Beliefs & Rewards
+    fig, axs = plt.subplots(1, 3, figsize=(18, 6))
 
-        axs[0].plot(range(len(belief_counts["Believers"])), belief_counts["Believers"], label="Believers", color="red")
-        axs[0].plot(range(len(belief_counts["Skeptics"])), belief_counts["Skeptics"], label="Skeptics", color="blue")
-        axs[0].set_title("Believers vs. Skeptics Over Time")
-        axs[0].legend()
+    # Believers vs Skeptics
+    axs[0].plot(range(len(belief_counts["Believers"])), belief_counts["Believers"], label="Believers", color="red")
+    axs[0].plot(range(len(belief_counts["Skeptics"])), belief_counts["Skeptics"], label="Skeptics", color="blue")
+    axs[0].set_title("Believers vs. Skeptics Over Time")
+    axs[0].legend()
 
-        axs[1].plot(range(len(belief_counts["Neutrals"])), belief_counts["Neutrals"], label="Neutrals", color="gray")
-        axs[1].set_title("Neutral Count Over Time")
-        axs[1].legend()
+    # Neutrals over time
+    axs[1].plot(range(len(belief_counts["Neutrals"])), belief_counts["Neutrals"], label="Neutrals", color="gray")
+    axs[1].set_title("Neutral Count Over Time")
+    axs[1].legend()
 
-        # Cumulative rewards with 90% CI
-        axs[2].set_title("Cumulative Rewards (90% CI)")
-        believer_rewards = rewards["Believer"]
-        skeptic_rewards = rewards["Skeptic"]
-        x = range(len(believer_rewards))
+    # Cumulative Rewards with 90% CI
+    axs[2].set_title("Cumulative Rewards (90% CI)")
+    believer_rewards = rewards["Believer"]
+    skeptic_rewards = rewards["Skeptic"]
+    x = range(len(believer_rewards))
 
-        def compute_ci(data):
-            data = np.array(data)
-            mean = np.cumsum(data) / (np.arange(len(data)) + 1)
-            std_err = [np.std(data[:i+1]) / np.sqrt(i+1) if i > 0 else 0 for i in range(len(data))]
-            ci = 1.645 * np.array(std_err)
-            return mean, ci
+    def compute_ci(data):
+        data = np.array(data)
+        mean = np.cumsum(data) / (np.arange(len(data)) + 1)
+        std_err = [np.std(data[:i+1]) / np.sqrt(i+1) if i > 0 else 0 for i in range(len(data))]
+        ci = 1.645 * np.array(std_err)  # 90% confidence interval
+        return mean, ci
 
-        believer_mean, believer_ci = compute_ci(believer_rewards)
-        skeptic_mean, skeptic_ci = compute_ci(skeptic_rewards)
+    believer_mean, believer_ci = compute_ci(believer_rewards)
+    skeptic_mean, skeptic_ci = compute_ci(skeptic_rewards)
 
-        axs[2].plot(x, believer_mean, label="Believers", color="red")
-        axs[2].fill_between(x, believer_mean - believer_ci, believer_mean + believer_ci, color="red", alpha=0.3)
+    axs[2].plot(x, believer_mean, label="Believers", color="red")
+    axs[2].fill_between(x, believer_mean - believer_ci, believer_mean + believer_ci, color="red", alpha=0.3)
 
-        axs[2].plot(x, skeptic_mean, label="Skeptics", color="blue")
-        axs[2].fill_between(x, skeptic_mean - skeptic_ci, skeptic_mean + skeptic_ci, color="blue", alpha=0.3)
+    axs[2].plot(x, skeptic_mean, label="Skeptics", color="blue")
+    axs[2].fill_between(x, skeptic_mean - skeptic_ci, skeptic_mean + skeptic_ci, color="blue", alpha=0.3)
 
-        axs[2].legend()
-        axs[2].set_xlabel("Simulation Step")
-        axs[2].set_ylabel("Cumulative Reward")
+    axs[2].legend()
+    axs[2].set_xlabel("Simulation Step")
+    axs[2].set_ylabel("Cumulative Reward")
 
-        graph_plot.pyplot(fig)
+    graph_plot.pyplot(fig)
     st.success("Simulation Complete")
