@@ -1,5 +1,4 @@
 matplotlib
-numpy
 streamlit
 networkx
 scipy
@@ -12,3 +11,5 @@ image
 #random
 #time
 #pygame
+pandas == 2.2.2
+numpy == 2.0.2
