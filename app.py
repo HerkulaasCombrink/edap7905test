@@ -154,7 +154,7 @@ def render_map():
         layers=[layer],
         initial_view_state=view_state,
         tooltip={"text": "{name}\nOwner: {owner}"},
-        map_style="mapbox://styles/mapbox/light-v10"
+        map_style=None  # ← No Mapbox token needed!
     ))
 
 # --- Sidebar Controls ---
