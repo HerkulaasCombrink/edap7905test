@@ -227,7 +227,7 @@ if st.session_state.simulation_started:
 
     ax.set_ylabel("Territories")
 #    ax.set_ylim(0, st.session_state.num_territories)
-    ax.set_ylim(0, 100)
+    ax.set_ylim(0, 200)
     ax.set_title("Territories Owned by Agent")
     st.pyplot(fig)
 
