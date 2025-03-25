@@ -1,211 +1,363 @@
+#Final code for book
+# Raw First Round Book Code 22_03_2025
+# Imports and Setup Section 1
 import streamlit as st
-import pandas as pd
+import networkx as nx
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import random
-import pydeck as pdk
 import time
-from geopy.distance import geodesic
+from fpdf import FPDF
+import io
+from PIL import Image
+import tempfile
+import os
 
-st.set_page_config(page_title="Gauteng Territory Simulation", layout="wide")
-st.title("🏙️ Agent-Based Simulation: Gauteng Province")
+# Streamlit Interface Initialization Section 2
+st.title("Misinformation Dynamic Network Simulation")
+st.sidebar.header("Simulation Parameters")
+N = st.sidebar.slider("Number of Agents", min_value=50, max_value=500, value=100, step=10)
+misinformation_spread_prob = st.sidebar.slider("Misinformation Spread Probability", min_value=0.0, max_value=1.0, value=0.3, step=0.05)
+fact_check_prob = st.sidebar.slider("Fact-Checking Probability", min_value=0.0, max_value=1.0, value=0.1, step=0.05)
+skeptic_conversion_prob = st.sidebar.slider("Skeptic Conversion Probability", min_value=0.0, max_value=1.0, value=0.05, step=0.01)  # New parameter
+epsilon = st.sidebar.slider("Epsilon (E-Greedy Believers)", min_value=0.0, max_value=1.0, value=0.1, step=0.05)
+steps = st.sidebar.slider("Simulation Steps", min_value=50, max_value=500, value=200, step=10)
+believer_algorithm = st.sidebar.selectbox("Believer Strategy", ["E-Greedy", "Thompson Sampling", "UCB", "Random"])
+skeptic_algorithm = st.sidebar.selectbox("Skeptic Strategy", ["UCB", "Thompson Sampling", "Random"])
 
-# --- Constants ---
-AGENT_COLORS = {'Agent A': [255, 0, 0], 'Agent B': [0, 0, 255], 'Agent C': [0, 255, 0]}  # RGB
-AGENT_NAMES = list(AGENT_COLORS.keys())
-GAUTENG_BOUNDS = {
-    'lat_min': -26.7,
-    'lat_max': -25.5,
-    'lon_min': 27.5,
-    'lon_max': 28.7
-}
+# Network Initialization Section 3
+G = nx.barabasi_albert_graph(N, 3)
+network_pos = nx.spring_layout(G)  # Fixed layout for consistent visualization
 
-# --- Sidebar Controls ---
-st.sidebar.markdown("### Simulation Controls")
-
-# Choose number of territories (adjustable)
-num_territories = st.sidebar.slider("Number of Territories", 50, 1000, 500, step=50)
-
-# --- Generate Random Territory Points in Gauteng ---
-def generate_gauteng_territories(n):
-    lats = np.random.uniform(low=GAUTENG_BOUNDS['lat_min'], high=GAUTENG_BOUNDS['lat_max'], size=n)
-    lons = np.random.uniform(low=GAUTENG_BOUNDS['lon_min'], high=GAUTENG_BOUNDS['lon_max'], size=n)
-    names = [f"G{i+1}" for i in range(n)]
-    return pd.DataFrame({'name': names, 'lat': lats, 'lon': lons, 'owner': [None]*n})
-
-# --- Session State Initialization ---
-if 'simulation_started' not in st.session_state:
-    st.session_state.simulation_started = False
-if 'territories' not in st.session_state:
-    st.session_state.territories = None
-if 'agents' not in st.session_state:
-    st.session_state.agents = None
-if 'step' not in st.session_state:
-    st.session_state.step = 0
-if 'auto_running' not in st.session_state:
-    st.session_state.auto_running = False
-if 'remaining_steps' not in st.session_state:
-    st.session_state.remaining_steps = 0
-if 'num_territories' not in st.session_state:
-    st.session_state.num_territories = num_territories
-
-# --- Core Functions ---
-def get_adjacent(current_idx, total):
-    return [i for i in range(total) if i != current_idx]
-
-def reset_simulation():
-    n = st.session_state.num_territories
-    territories = generate_gauteng_territories(n)
-    start_idxs = random.sample(range(n), 3)
-    agents = {
-        AGENT_NAMES[i]: {
-            'color': AGENT_COLORS[AGENT_NAMES[i]],
-            'location': start_idxs[i],
-            'owned': set(),
-            'cooldown': 0
-        }
-        for i in range(3)
-    }
-    st.session_state.territories = territories
-    st.session_state.agents = agents
-    st.session_state.step = 0
-    st.session_state.simulation_started = True
-    st.session_state.auto_running = False
-    st.session_state.remaining_steps = 0
-
-if st.sidebar.button("🚀 Start Simulation"):
-    st.session_state.num_territories = num_territories
-    reset_simulation()
-# --- Define run_step before any button that might use it ---
-def run_step():
-    move_attempts = {}
-    territories = st.session_state.territories
-    agents = st.session_state.agents
-    num_territories = st.session_state.num_territories
-
-    for agent_name, agent in agents.items():
-        if agent['cooldown'] > 0:
-            agent['cooldown'] -= 1
-            continue
-
-        current_idx = agent['location']
-        current_pos = (territories.at[current_idx, 'lat'], territories.at[current_idx, 'lon'])
-        options = get_adjacent(current_idx, num_territories)
-
-        if agent_name == "Agent A":  # Greedy
-            unclaimed = [
-                (i, geodesic(current_pos, (territories.at[i, 'lat'], territories.at[i, 'lon'])).km)
-                for i in options if territories.at[i, 'owner'] is None
-            ]
-            target_idx = min(unclaimed, key=lambda x: x[1])[0] if unclaimed else random.choice(options)
-
-        elif agent_name == "Agent B":  # Random
-            unclaimed = [i for i in options if territories.at[i, 'owner'] is None]
-            target_idx = random.choice(unclaimed) if unclaimed else random.choice(options)
-
-        elif agent_name == "Agent C":  # Aggressive
-            claimed_by_others = [
-                i for i in options
-                if territories.at[i, 'owner'] is not None and territories.at[i, 'owner'] != agent_name
-            ]
-            if claimed_by_others:
-                target_idx = random.choice(claimed_by_others)
-            else:
-                unclaimed = [i for i in options if territories.at[i, 'owner'] is None]
-                target_idx = random.choice(unclaimed) if unclaimed else random.choice(options)
-
-        if target_idx not in move_attempts:
-            move_attempts[target_idx] = []
-        move_attempts[target_idx].append(agent_name)
-
-    for target_idx, contenders in move_attempts.items():
-        winner = random.choice(contenders) if len(contenders) > 1 else contenders[0]
-        previous_owner = territories.at[target_idx, 'owner']
-        territories.at[target_idx, 'owner'] = winner
-        agents[winner]['location'] = target_idx
-        agents[winner]['owned'].add(target_idx)
-
-        if previous_owner and previous_owner != winner:
-            agents[winner]['cooldown'] = 1
-
-    st.session_state.step += 1
-
-if st.session_state.simulation_started:
-    auto_steps = st.sidebar.slider("Auto Steps (seconds)", 1, 100, 10)
-
-    if st.sidebar.button("▶️ Run Automatically"):
-        st.session_state.auto_running = True
-        st.session_state.remaining_steps = auto_steps
-        st.rerun()
-
-    if st.sidebar.button("⏭️ Next Step"):
-        run_step()
-
-    st.sidebar.write(f"Current Step: **{st.session_state.step}**")
+# Agent Initialization Section 4
+belief_states = ["Believer", "Skeptic", "Neutral", "Influencer"]
+node_colors = {}
+node_sizes = {}
+skep_strategies = {}  # Store selected skeptic strategy
+agent_types = {"Believer": set(), "Skeptic": set(), "Neutral": set(), "Influencer": set()}
+rewards = {"Skeptic": [0], "Believer": [0]}  # Track cumulative rewards over time
+for node in G.nodes():
+    belief = random.choices(belief_states, weights=[0.4, 0.4, 0.1, 0.1])[0]
+    if belief == "Skeptic":
+        skep_strategies[node] = skeptic_algorithm  # Assign selected skeptic algorithm
+    elif belief == "Believer":
+        skep_strategies[node] = believer_algorithm  # Assign selected believer algorithm
+    agent_types[belief].add(node)
+    node_colors[node] = {"Believer": "red", "Skeptic": "blue", "Neutral": "gray", "Influencer": "green"}[belief]
+    node_sizes[node] = {"Believer": 100, "Skeptic": 100, "Neutral": 80, "Influencer": 300}[belief]
 
 
-def render_map():
-    territories = st.session_state.territories
-    agents = st.session_state.agents
+belief_counts = {"Believers": [len(agent_types["Believer"])],
+                 "Skeptics": [len(agent_types["Skeptic"])],
+                 "Neutrals": [len(agent_types["Neutral"])],
+                 "Influencers": [len(agent_types["Influencer"])],
+                 "Rewards_Skeptic": [0],
+                 "Rewards_Believer": [0]}
 
-    layer_data = []
-    for idx, row in territories.iterrows():
-        owner = row['owner']
-        color = agents[owner]['color'] if owner else [180, 180, 180]
-        layer_data.append({
-            'lat': row['lat'],
-            'lon': row['lon'],
-            'color': color,
-            'name': row['name'],
-            'owner': owner or "Unclaimed"
-        })
+# Simulation UI and Trigger Section 5
+st.sidebar.write("Click the button below to start the simulation.")
+if st.sidebar.button("Start Simulation"):
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    network_plot = st.empty()
+    graph_plot = st.empty()
 
-    df_map = pd.DataFrame(layer_data)
+# Simulation Loop Section 6    
+    for t in range(steps):
+        reward_skeptic = rewards["Skeptic"][-1]
+        reward_believer = rewards["Believer"][-1]
+        for node in list(G.nodes()):
+            neighbors = list(G.neighbors(node))
+            if not neighbors:
+                continue
+            target = random.choice(neighbors)
+            if node in agent_types["Believer"]:  # Believers applying selected strategy
+                if believer_algorithm == "E-Greedy" and random.random() < epsilon:
+                    target = random.choice(neighbors)  # Explore new target
+                if believer_algorithm == "UCB":
+                    if random.random() < misinformation_spread_prob:
+                        target = max(neighbors, key=lambda n: len(list(G.neighbors(n))), default=target)
+                if random.random() < misinformation_spread_prob and target in agent_types["Neutral"]:
+                    agent_types["Believer"].add(target)
+                    agent_types["Neutral"].remove(target)
+                    node_colors[target] = "red"
+                    reward_believer += 1
+                elif target in agent_types["Influencer"]:
+                    agent_types["Believer"].add(target)
+                    node_colors[target] = "red"
+                    reward_believer += 2
+            elif node in agent_types["Skeptic"]:  # Skeptics applying selected strategy
+                strategy = skep_strategies.get(node, "UCB")
 
-    layer = pdk.Layer(
-        "ScatterplotLayer",
-        data=df_map,
-        get_position='[lon, lat]',
-        get_color='color',
-        get_radius=300,
-        pickable=True
+                if strategy == "UCB":
+                    if random.random() < fact_check_prob:
+                        if target in agent_types["Believer"]:
+                            agent_types["Skeptic"].add(target)
+                            agent_types["Believer"].remove(target)
+                            node_colors[target] = "blue"
+                            reward_skeptic += 1
+                        elif target in agent_types["Influencer"]:
+                            agent_types["Skeptic"].add(target)
+                            agent_types["Influencer"].remove(target)
+                            node_colors[target] = "blue"
+                            reward_skeptic += 3  # bonus reward for converting an Influencer
+                        elif target in agent_types["Neutral"]:
+                            agent_types["Skeptic"].add(target)
+                            agent_types["Neutral"].remove(target)
+                            node_colors[target] = "blue"
+                            reward_skeptic += 0.5
+
+                elif strategy == "Thompson Sampling":
+                    if random.betavariate(2, 5) > 0.5:
+                        if target in agent_types["Believer"]:
+                            agent_types["Skeptic"].add(target)
+                            agent_types["Believer"].remove(target)
+                            node_colors[target] = "blue"
+                            reward_skeptic += 1
+                        elif target in agent_types["Influencer"]:
+                            agent_types["Skeptic"].add(target)
+                            agent_types["Influencer"].remove(target)
+                            node_colors[target] = "blue"
+                            reward_skeptic += 3
+                        elif target in agent_types["Neutral"]:
+                            agent_types["Skeptic"].add(target)
+                            agent_types["Neutral"].remove(target)
+                            node_colors[target] = "blue"
+                            reward_skeptic += 0.5
+
+                elif strategy == "Random":
+                    if random.random() < 0.5:
+                        if target in agent_types["Believer"]:
+                            agent_types["Skeptic"].add(target)
+                            agent_types["Believer"].remove(target)
+                            node_colors[target] = "blue"
+                            reward_skeptic += 1
+                        elif target in agent_types["Influencer"]:
+                            agent_types["Skeptic"].add(target)
+                            agent_types["Influencer"].remove(target)
+                            node_colors[target] = "blue"
+                            reward_skeptic += 3
+                        elif target in agent_types["Neutral"]:
+                            agent_types["Skeptic"].add(target)
+                            agent_types["Neutral"].remove(target)
+                            node_colors[target] = "blue"
+                            reward_skeptic += 0.5
+
+                # Skeptic conversion back to Neutral
+                if random.random() < skeptic_conversion_prob:
+                    agent_types["Skeptic"].remove(node)
+                    agent_types["Neutral"].add(node)
+                    node_colors[node] = "gray"
+
+#  These updates happen for **every step**
+        rewards["Believer"].append(reward_believer)
+        rewards["Skeptic"].append(reward_skeptic)
+        belief_counts["Believers"].append(len(agent_types["Believer"]))
+        belief_counts["Skeptics"].append(len(agent_types["Skeptic"]))
+        belief_counts["Neutrals"].append(len(agent_types["Neutral"]))
+        belief_counts["Influencers"].append(len(agent_types["Influencer"]))
+    
+        progress_bar.progress((t + 1) / steps)
+        status_text.text(f"Simulation Step {t + 1}/{steps}")
+    
+    #  Only render plots every 10 steps
+        if t % 10 == 0:
+        # Network Graph
+            fig, ax = plt.subplots(figsize=(12, 10))
+            nx.draw(
+                G, pos=network_pos,
+                node_color=[node_colors[n] for n in G.nodes()],
+                node_size=[node_sizes[n] for n in G.nodes()],
+                edge_color="lightgray", with_labels=False
+            )
+            network_plot.pyplot(fig)
+    
+        # Line Graphs for Beliefs & Rewards
+            fig, axs = plt.subplots(1, 3, figsize=(18, 6))
+            def compute_ci(data):
+                data = np.array(data)
+                mean = np.cumsum(data) / (np.arange(len(data)) + 1)
+                std_err = [np.std(data[:i+1]) / np.sqrt(i+1) if i > 0 else 0 for i in range(len(data))]
+                ci = 1.645 * np.array(std_err)
+                return mean, ci
+            
+            believers = belief_counts["Believers"]
+            skeptics = belief_counts["Skeptics"]
+            x = range(len(believers))
+            
+            bel_mean, bel_ci = compute_ci(believers)
+            skep_mean, skep_ci = compute_ci(skeptics)
+            
+            axs[0].plot(x, bel_mean, label="Believers", color="red")
+            axs[0].fill_between(x, bel_mean - bel_ci, bel_mean + bel_ci, color="red", alpha=0.3)
+            
+            axs[0].plot(x, skep_mean, label="Skeptics", color="blue")
+            axs[0].fill_between(x, skep_mean - skep_ci, skep_mean + skep_ci, color="blue", alpha=0.3)
+            axs[0].set_title("Believers vs. Skeptics Over Time")
+            axs[0].legend()
+    
+        # Neutrals over time
+            neutrals = belief_counts["Neutrals"]
+            neu_mean, neu_ci = compute_ci(neutrals)
+            axs[1].plot(x, neu_mean, label="Neutrals", color="gray")
+            axs[1].fill_between(x, neu_mean - neu_ci, neu_mean + neu_ci, color="gray", alpha=0.3)
+
+            axs[1].set_title("Neutral Count Over Time")
+            axs[1].legend()
+    
+        # Cumulative Rewards with 90% CI
+            axs[2].set_title("Cumulative Rewards (90% CI)")
+            believer_rewards = rewards["Believer"]
+            skeptic_rewards = rewards["Skeptic"]
+            x = range(len(believer_rewards))
+    
+            def compute_ci(data):
+                data = np.array(data)
+                mean = np.cumsum(data) / (np.arange(len(data)) + 1)
+                std_err = [np.std(data[:i+1]) / np.sqrt(i+1) if i > 0 else 0 for i in range(len(data))]
+                ci = 1.645 * np.array(std_err)  # 90% confidence interval
+                return mean, ci
+    
+            believer_mean, believer_ci = compute_ci(believer_rewards)
+            skeptic_mean, skeptic_ci = compute_ci(skeptic_rewards)
+        
+            axs[2].plot(x, believer_mean, label="Believers", color="red")
+            axs[2].fill_between(x, believer_mean - believer_ci, believer_mean + believer_ci, color="red", alpha=0.3)
+        
+            axs[2].plot(x, skeptic_mean, label="Skeptics", color="blue")
+            axs[2].fill_between(x, skeptic_mean - skeptic_ci, skeptic_mean + skeptic_ci, color="blue", alpha=0.3)
+        
+            axs[2].legend()
+            axs[2].set_xlabel("Simulation Step")
+            axs[2].set_ylabel("Cumulative Reward")
+        
+            graph_plot.pyplot(fig)
+            # Show the parameters used in the simulation
+
+    st.success("Simulation Complete")
+    # --- Generate the final plot image ---
+    fig, axs = plt.subplots(1, 3, figsize=(18, 6))
+    
+    # Believers vs. Skeptics
+    axs[0].plot(x, bel_mean, label="Believers", color="red")
+    axs[0].fill_between(x, bel_mean - bel_ci, bel_mean + bel_ci, color="red", alpha=0.3)
+    axs[0].plot(x, skep_mean, label="Skeptics", color="blue")
+    axs[0].fill_between(x, skep_mean - skep_ci, skep_mean + skep_ci, color="blue", alpha=0.3)
+    axs[0].set_title("Believers vs. Skeptics")
+    axs[0].legend()
+    
+    # Neutrals
+    axs[1].plot(x, neu_mean, label="Neutrals", color="gray")
+    axs[1].fill_between(x, neu_mean - neu_ci, neu_mean + neu_ci, color="gray", alpha=0.3)
+    axs[1].set_title("Neutrals Over Time")
+    axs[1].legend()
+    
+    # Rewards
+    axs[2].plot(x, believer_mean, label="Believers", color="red")
+    axs[2].fill_between(x, believer_mean - believer_ci, believer_mean + believer_ci, color="red", alpha=0.3)
+    axs[2].plot(x, skeptic_mean, label="Skeptics", color="blue")
+    axs[2].fill_between(x, skeptic_mean - skeptic_ci, skeptic_mean + skeptic_ci, color="blue", alpha=0.3)
+    axs[2].set_title("Cumulative Rewards (90% CI)")
+    axs[2].legend()
+    
+    # Save plot to a BytesIO buffer
+
+    
+    # Read the contents back for Streamlit to download
+
+    
+    # Optional: clean up the temp file
+    import os
+#    os.remove(tmp_pdf_path)
+    st.subheader("Simulation Parameters Used")
+    params_df = pd.DataFrame({
+        "Parameter": [
+            "Number of Agents",
+            "Misinformation Spread Probability",
+            "Fact-Checking Probability",
+            "Skeptic Conversion Probability",
+            "Epsilon (E-Greedy)",
+            "Simulation Steps",
+            "Believer Strategy",
+            "Skeptic Strategy"
+        ],
+        "Value": [
+            N,
+            misinformation_spread_prob,
+            fact_check_prob,
+            skeptic_conversion_prob,
+            epsilon,
+            steps,
+            believer_algorithm,
+            skeptic_algorithm
+        ]
+    })
+    st.table(params_df)
+    results_df = pd.DataFrame({
+        "Step": list(range(len(belief_counts["Believers"]))),
+        "Believers": belief_counts["Believers"],
+        "Skeptics": belief_counts["Skeptics"],
+        "Neutrals": belief_counts["Neutrals"],
+        "Influencers": belief_counts["Influencers"],
+        "Reward_Believer": rewards["Believer"],
+        "Reward_Skeptic": rewards["Skeptic"]
+    })
+    
+    csv = results_df.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        label="📥 Download Simulation Results as CSV",
+        data=csv,
+        file_name="misinformation_simulation_results.csv",
+        mime="text/csv",
+        key="csv_download_button"
     )
-
-    view_state = pdk.ViewState(
-        latitude=-26.2,
-        longitude=28.2,
-        zoom=8.5,
-        pitch=0
-    )
-
-    st.pydeck_chart(pdk.Deck(
-        layers=[layer],
-        initial_view_state=view_state,
-        tooltip={"text": "{name}\nOwner: {owner}"},
-        map_style=None
-    ))
-
-# --- Auto-Run Engine ---
-if st.session_state.simulation_started:
-    if st.session_state.auto_running and st.session_state.remaining_steps > 0:
-        run_step()
-        st.session_state.remaining_steps -= 1
-        time.sleep(1)
-        st.rerun()
-    elif st.session_state.remaining_steps == 0:
-        st.session_state.auto_running = False
-
-# --- Main Map & Bar Chart ---
-if st.session_state.simulation_started:
-    render_map()
-
-    st.subheader("📊 Territories Owned Over Time")
-    stats = {
-        agent: len(data['owned'])
-        for agent, data in st.session_state.agents.items()
-    }
-
-    df_stats = pd.DataFrame.from_dict(stats, orient='index', columns=['Territories']).rename_axis("Agent")
-    st.dataframe(df_stats)
-    st.bar_chart(df_stats)
-else:
-    st.info("Click **Start Simulation** to begin.")
+    # Save plot to file (must be saved to disk for FPDF)
+    plot_path = os.path.join(tempfile.gettempdir(), "plot.png")
+    fig.savefig(plot_path, format="png")
+    
+    # Create PDF and build content
+    # ✅ After all the PDF content has been added
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "Misinformation Simulation Report", ln=True)
+    
+    pdf.set_font("Arial", "", 12)
+    pdf.ln(5)
+    pdf.cell(0, 10, "Simulation Parameters:", ln=True)
+    
+    # Add parameters
+    for param, value in zip(params_df["Parameter"], params_df["Value"]):
+        pdf.cell(0, 10, f"{param}: {value}", ln=True)
+    
+    pdf.ln(5)
+    pdf.cell(0, 10, "Final Belief Counts:", ln=True)
+    pdf.cell(0, 10, f"Believers: {belief_counts['Believers'][-1]}", ln=True)
+    pdf.cell(0, 10, f"Skeptics: {belief_counts['Skeptics'][-1]}", ln=True)
+    pdf.cell(0, 10, f"Neutrals: {belief_counts['Neutrals'][-1]}", ln=True)
+    pdf.cell(0, 10, f"Influencers: {belief_counts['Influencers'][-1]}", ln=True)
+    pdf.image(plot_path, x=10, w=180)
+    # Save final figure as image
+    img_path = "plot_final.png"
+    fig.savefig(img_path, format="png")
+    pdf.image(img_path, x=10, y=None, w=180)
+    
+    # ✅ Now write PDF to temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
+        pdf.output(tmp_pdf.name)
+        tmp_pdf_path = tmp_pdf.name
+    
+    # ✅ Read and serve the PDF to the user
+    with open(tmp_pdf_path, "rb") as f:
+        st.download_button(
+            label="📄 Download Full PDF Report",
+            data=f.read(),
+            file_name="misinformation_simulation_report.pdf",
+            mime="application/pdf",
+            key="pdf_download_button"
+        )
+    
+    # ✅ Optional cleanup
+    os.remove(tmp_pdf_path)
+    os.remove(plot_path)
