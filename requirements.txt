@@ -8,6 +8,7 @@ requests
 xlml
 fpdf
 image
+geopy
 #random
 #time
 #pygame
