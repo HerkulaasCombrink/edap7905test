@@ -75,20 +75,7 @@ def reset_simulation():
 if st.sidebar.button("🚀 Start Simulation"):
     st.session_state.num_territories = num_territories
     reset_simulation()
-
-if st.session_state.simulation_started:
-    auto_steps = st.sidebar.slider("Auto Steps (seconds)", 1, 100, 10)
-
-    if st.sidebar.button("▶️ Run Automatically"):
-        st.session_state.auto_running = True
-        st.session_state.remaining_steps = auto_steps
-        st.rerun()
-
-    if st.sidebar.button("⏭️ Next Step"):
-        run_step()
-
-    st.sidebar.write(f"Current Step: **{st.session_state.step}**")
-
+# --- Define run_step before any button that might use it ---
 def run_step():
     move_attempts = {}
     territories = st.session_state.territories
@@ -141,6 +128,20 @@ def run_step():
             agents[winner]['cooldown'] = 1
 
     st.session_state.step += 1
+
+if st.session_state.simulation_started:
+    auto_steps = st.sidebar.slider("Auto Steps (seconds)", 1, 100, 10)
+
+    if st.sidebar.button("▶️ Run Automatically"):
+        st.session_state.auto_running = True
+        st.session_state.remaining_steps = auto_steps
+        st.rerun()
+
+    if st.sidebar.button("⏭️ Next Step"):
+        run_step()
+
+    st.sidebar.write(f"Current Step: **{st.session_state.step}**")
+
 
 def render_map():
     territories = st.session_state.territories
