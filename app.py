@@ -3,23 +3,30 @@ import pandas as pd
 import numpy as np
 import random
 import pydeck as pdk
+import time
 
-st.set_page_config(page_title="Agent Territory Simulation", layout="wide")
-st.title("🇿🇦 Agent-Based Territory Simulation")
+st.set_page_config(page_title="Gauteng Territory Simulation", layout="wide")
+st.title("🏙️ Agent-Based Simulation: Gauteng Province")
 
 # --- Constants ---
-NUM_TERRITORIES = 72
+NUM_TERRITORIES = 500
 AGENT_COLORS = {'Agent A': [255, 0, 0], 'Agent B': [0, 0, 255], 'Agent C': [0, 255, 0]}  # RGB
 AGENT_NAMES = list(AGENT_COLORS.keys())
+GAUTENG_BOUNDS = {
+    'lat_min': -26.7,
+    'lat_max': -25.5,
+    'lon_min': 27.5,
+    'lon_max': 28.7
+}
 
-# --- Helper: Generate Random Territory Points ---
-def generate_territories(n=72):
-    lats = np.random.uniform(low=-35.0, high=-22.0, size=n)
-    lons = np.random.uniform(low=16.0, high=33.0, size=n)
-    names = [f"T{i+1}" for i in range(n)]
+# --- Generate Random Territory Points in Gauteng ---
+def generate_gauteng_territories(n=500):
+    lats = np.random.uniform(low=GAUTENG_BOUNDS['lat_min'], high=GAUTENG_BOUNDS['lat_max'], size=n)
+    lons = np.random.uniform(low=GAUTENG_BOUNDS['lon_min'], high=GAUTENG_BOUNDS['lon_max'], size=n)
+    names = [f"G{i+1}" for i in range(n)]
     return pd.DataFrame({'name': names, 'lat': lats, 'lon': lons, 'owner': [None]*n})
 
-# --- Session State Initialization ---
+# --- Initialize Session State ---
 if 'simulation_started' not in st.session_state:
     st.session_state.simulation_started = False
 if 'territories' not in st.session_state:
@@ -29,12 +36,12 @@ if 'agents' not in st.session_state:
 if 'step' not in st.session_state:
     st.session_state.step = 0
 
-# --- Functions ---
+# --- Core Functions ---
 def get_adjacent(current_idx):
     return [i for i in range(NUM_TERRITORIES) if i != current_idx]
 
 def reset_simulation():
-    territories = generate_territories(NUM_TERRITORIES)
+    territories = generate_gauteng_territories(NUM_TERRITORIES)
     start_idxs = random.sample(range(NUM_TERRITORIES), 3)
     agents = {
         AGENT_NAMES[i]: {
@@ -85,31 +92,14 @@ def run_step():
 
     st.session_state.step += 1
 
-# --- UI: Sidebar ---
-st.sidebar.markdown("### Controls")
-
-if not st.session_state.simulation_started:
-    if st.sidebar.button("🚀 Start Simulation"):
-        reset_simulation()
-else:
-    if st.sidebar.button("⏭️ Next Step"):
-        run_step()
-
-    st.sidebar.write(f"Current Step: **{st.session_state.step}**")
-
-# --- Display Map ---
-if st.session_state.simulation_started:
+def render_map():
     territories = st.session_state.territories
     agents = st.session_state.agents
 
-    # Build layer data
     layer_data = []
     for idx, row in territories.iterrows():
         owner = row['owner']
-        if owner:
-            color = agents[owner]['color']
-        else:
-            color = [128, 128, 128]  # Grey for unclaimed
+        color = agents[owner]['color'] if owner else [180, 180, 180]  # grey if unclaimed
         layer_data.append({
             'lat': row['lat'],
             'lon': row['lon'],
@@ -125,22 +115,53 @@ if st.session_state.simulation_started:
         data=df_map,
         get_position='[lon, lat]',
         get_color='color',
-        get_radius=10000,
+        get_radius=100,
         pickable=True
     )
 
     view_state = pdk.ViewState(
-        latitude=-28,
-        longitude=25,
-        zoom=4.5,
+        latitude=-26.1,
+        longitude=28.2,
+        zoom=8.5,
         pitch=0
     )
 
-    st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip={"text": "{name}\nOwner: {owner}"}))
+    st.pydeck_chart(pdk.Deck(
+        layers=[layer],
+        initial_view_state=view_state,
+        tooltip={"text": "{name}\nOwner: {owner}"}
+    ))
 
-    # --- Stats Display ---
+# --- Sidebar Controls ---
+st.sidebar.markdown("### Simulation Controls")
+
+if st.sidebar.button("🚀 Start Simulation"):
+    reset_simulation()
+
+if st.session_state.simulation_started:
+    auto_steps = st.sidebar.slider("Number of seconds/steps", 1, 100, 10)
+
+    if st.sidebar.button("▶️ Run Automatically"):
+        for _ in range(auto_steps):
+            run_step()
+            render_map()
+            time.sleep(1)
+            st.experimental_rerun()
+
+    if st.sidebar.button("⏭️ Next Step"):
+        run_step()
+
+    st.sidebar.write(f"Step: **{st.session_state.step}**")
+
+# --- Main Content ---
+if st.session_state.simulation_started:
+    render_map()
+
     st.subheader("📊 Territories Owned")
-    stats = {agent: len(data['owned']) for agent, data in agents.items()}
+    stats = {
+        agent: len(data['owned'])
+        for agent, data in st.session_state.agents.items()
+    }
     st.dataframe(pd.DataFrame.from_dict(stats, orient='index', columns=['Territories']).rename_axis("Agent"))
 else:
     st.info("Click **Start Simulation** in the sidebar to begin.")
