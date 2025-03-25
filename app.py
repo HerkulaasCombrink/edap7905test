@@ -4,6 +4,7 @@ import numpy as np
 import random
 import pydeck as pdk
 import time
+from geopy.distance import geodesic
 
 st.set_page_config(page_title="Gauteng Territory Simulation", layout="wide")
 st.title("🏙️ Agent-Based Simulation: Gauteng Province")
@@ -74,13 +75,30 @@ def run_step():
             continue
 
         current_idx = agent['location']
+        current_pos = (territories.at[current_idx, 'lat'], territories.at[current_idx, 'lon'])
         options = get_adjacent(current_idx)
 
-        unclaimed = [i for i in options if territories.at[i, 'owner'] is None]
-        if unclaimed:
-            target_idx = random.choice(unclaimed)
-        else:
-            target_idx = random.choice(options)
+        if agent_name == "Agent A":  # Greedy
+            unclaimed = [
+                (i, geodesic(current_pos, (territories.at[i, 'lat'], territories.at[i, 'lon'])).km)
+                for i in options if territories.at[i, 'owner'] is None
+            ]
+            target_idx = min(unclaimed, key=lambda x: x[1])[0] if unclaimed else random.choice(options)
+
+        elif agent_name == "Agent B":  # Random
+            unclaimed = [i for i in options if territories.at[i, 'owner'] is None]
+            target_idx = random.choice(unclaimed) if unclaimed else random.choice(options)
+
+        elif agent_name == "Agent C":  # Aggressive
+            claimed_by_others = [
+                i for i in options
+                if territories.at[i, 'owner'] is not None and territories.at[i, 'owner'] != agent_name
+            ]
+            if claimed_by_others:
+                target_idx = random.choice(claimed_by_others)
+            else:
+                unclaimed = [i for i in options if territories.at[i, 'owner'] is None]
+                target_idx = random.choice(unclaimed) if unclaimed else random.choice(options)
 
         if target_idx not in move_attempts:
             move_attempts[target_idx] = []
@@ -151,6 +169,7 @@ if st.session_state.simulation_started:
     if st.sidebar.button("▶️ Run Automatically"):
         st.session_state.auto_running = True
         st.session_state.remaining_steps = auto_steps
+        st.rerun()
 
     if st.sidebar.button("⏭️ Next Step"):
         run_step()
@@ -163,19 +182,22 @@ if st.session_state.simulation_started:
         run_step()
         st.session_state.remaining_steps -= 1
         time.sleep(1)
-        st.experimental_rerun()
+        st.rerun()
     elif st.session_state.remaining_steps == 0:
         st.session_state.auto_running = False
 
-# --- Main Map + Stats ---
+# --- Main Map & Bar Chart ---
 if st.session_state.simulation_started:
     render_map()
 
-    st.subheader("📊 Territories Owned")
+    st.subheader("📊 Territories Owned Over Time")
     stats = {
         agent: len(data['owned'])
         for agent, data in st.session_state.agents.items()
     }
-    st.dataframe(pd.DataFrame.from_dict(stats, orient='index', columns=['Territories']).rename_axis("Agent"))
+
+    df_stats = pd.DataFrame.from_dict(stats, orient='index', columns=['Territories']).rename_axis("Agent")
+    st.dataframe(df_stats)
+    st.bar_chart(df_stats)
 else:
     st.info("Click **Start Simulation** to begin.")
