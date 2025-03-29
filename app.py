@@ -1,4 +1,5 @@
 import os
+import pickle
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -8,6 +9,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from PIL import Image
 from tqdm import tqdm
+import streamlit as st
 
 # --- Config ---
 IMAGE_DIR = "images"
@@ -17,6 +19,9 @@ EPOCHS = 10
 LR = 0.001
 IMG_SIZE = 224
 MODEL_SAVE_PATH = "hand_signal_cnn.pth"
+PICKLE_SAVE_PATH = "hand_signal_cnn.pkl"
+
+st.title("🧠 Train CNN on Hand Signal Dataset")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -72,15 +77,12 @@ class SimpleCNN(nn.Module):
             nn.Conv2d(3, 16, 3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
-
             nn.Conv2d(16, 32, 3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
-
             nn.Conv2d(32, 64, 3, padding=1),
             nn.ReLU(),
             nn.AdaptiveAvgPool2d((1,1)),
-
             nn.Flatten(),
             nn.Linear(64, num_classes)
         )
@@ -88,51 +90,54 @@ class SimpleCNN(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-model = SimpleCNN(num_classes=len(classes)).to(device)
+# --- Train button ---
+if st.button("🚀 Start Training"):
+    model = SimpleCNN(num_classes=len(classes)).to(device)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=LR)
 
-# --- Training Setup ---
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=LR)
+    for epoch in range(EPOCHS):
+        model.train()
+        total_loss = 0
 
-# --- Training Loop ---
-for epoch in range(EPOCHS):
-    model.train()
-    total_loss = 0
-
-    loop = tqdm(train_loader, desc=f"Epoch {epoch+1}/{EPOCHS}", leave=False)
-    for batch_idx, (images, labels) in enumerate(loop):
-        images, labels = images.to(device), labels.to(device)
-
-        optimizer.zero_grad()
-        outputs = model(images)
-        loss = criterion(outputs, labels)
-        loss.backward()
-        optimizer.step()
-
-        total_loss += loss.item()
-
-        loop.set_postfix({
-            "batch": batch_idx + 1,
-            "loss": f"{loss.item():.4f}"
-        })
-
-    avg_loss = total_loss / len(train_loader)
-    print(f"\n🟢 Epoch {epoch+1} completed - Avg Loss: {avg_loss:.4f}")
-
-    # --- Validation accuracy ---
-    model.eval()
-    correct = 0
-    total = 0
-    with torch.no_grad():
-        for images, labels in val_loader:
+        loop = tqdm(train_loader, desc=f"Epoch {epoch+1}/{EPOCHS}", leave=False)
+        for batch_idx, (images, labels) in enumerate(loop):
             images, labels = images.to(device), labels.to(device)
+            optimizer.zero_grad()
             outputs = model(images)
-            _, preds = torch.max(outputs, 1)
-            correct += (preds == labels).sum().item()
-            total += labels.size(0)
-    acc = correct / total
-    print(f"✅ Validation Accuracy: {acc:.2%}")
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+            loop.set_postfix({
+                "batch": batch_idx + 1,
+                "loss": f"{loss.item():.4f}"
+            })
 
-# --- Save model using state_dict only ---
-torch.save(model.state_dict(), MODEL_SAVE_PATH)
-print(f"\n💾 Model weights saved to: {MODEL_SAVE_PATH}")
+        avg_loss = total_loss / len(train_loader)
+        st.write(f"🟢 Epoch {epoch+1} - Avg Loss: {avg_loss:.4f}")
+
+        # --- Validation ---
+        model.eval()
+        correct = 0
+        total = 0
+        with torch.no_grad():
+            for images, labels in val_loader:
+                images, labels = images.to(device), labels.to(device)
+                outputs = model(images)
+                _, preds = torch.max(outputs, 1)
+                correct += (preds == labels).sum().item()
+                total += labels.size(0)
+        acc = correct / total
+        st.write(f"✅ Validation Accuracy: {acc:.2%}")
+
+    # Save model weights
+    torch.save(model.state_dict(), MODEL_SAVE_PATH)
+    st.success("✅ Model weights saved as .pth")
+
+    # Save Pickle
+    with open(PICKLE_SAVE_PATH, "wb") as f:
+        pickle.dump(model, f)
+
+    with open(PICKLE_SAVE_PATH, "rb") as f:
+        st.download_button("📥 Download Trained Model (.pkl)", f, file_name="hand_signal_cnn.pkl")
