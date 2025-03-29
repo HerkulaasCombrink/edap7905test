@@ -3,4 +3,7 @@ opencv-python-headless>=4.5.5.64
 pillow
 numpy
 pandas
-streamlit-drawable-canvas
+torch>=2.0
+torchvision
+scikit-learn
+tqdm
