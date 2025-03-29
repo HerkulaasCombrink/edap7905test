@@ -1,75 +1,21 @@
-import os
-import pickle
+import streamlit as st
+import cv2
 import torch
 import torch.nn as nn
-import torch.optim as optim
 from torchvision import transforms
-from torch.utils.data import DataLoader
-import pandas as pd
-from sklearn.model_selection import train_test_split
 from PIL import Image
-from tqdm import tqdm
-import streamlit as st
+import numpy as np
+import tempfile
+import os
 
-# --- Config ---
-IMAGE_DIR = "images"
-LABELS_FILE = "labels.csv"
-BATCH_SIZE = 32
-EPOCHS = 10
-LR = 0.001
-IMG_SIZE = 224
-MODEL_SAVE_PATH = "hand_signal_cnn.pth"
-PICKLE_SAVE_PATH = "hand_signal_cnn.pkl"
+st.set_page_config(page_title="🧠 Hand Signal Detector", layout="wide")
+st.title("🤖 Hand Signal Detection in Video")
 
-st.title("🧠 Train CNN on Hand Signal Dataset")
+# --- Upload model ---
+uploaded_model = st.file_uploader("📥 Upload your trained model (.pth)", type=["pth"])
+uploaded_video = st.file_uploader("🎥 Upload a video to analyze", type=["mp4", "mov", "avi"])
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# --- Load labels ---
-df = pd.read_csv(LABELS_FILE)
-classes = sorted(df["label"].unique().tolist())
-class_to_idx = {cls: idx for idx, cls in enumerate(classes)}
-df["label_idx"] = df["label"].map(class_to_idx)
-
-# --- Train/val split ---
-train_df, val_df = train_test_split(df, test_size=0.2, stratify=df["label"], random_state=42)
-
-# --- Custom Dataset ---
-class HandSignalDataset(torch.utils.data.Dataset):
-    def __init__(self, dataframe, image_dir, transform=None):
-        self.df = dataframe
-        self.image_dir = image_dir
-        self.transform = transform
-
-    def __len__(self):
-        return len(self.df)
-
-    def __getitem__(self, idx):
-        row = self.df.iloc[idx]
-        img_path = os.path.join(self.image_dir, row["filename"])
-        img = Image.open(img_path).convert("RGB")
-        label = row["label_idx"]
-
-        if self.transform:
-            img = self.transform(img)
-
-        return img, label
-
-# --- Transforms ---
-transform = transforms.Compose([
-    transforms.Resize((IMG_SIZE, IMG_SIZE)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.5]*3, std=[0.5]*3)
-])
-
-# --- Datasets & Loaders ---
-train_dataset = HandSignalDataset(train_df, IMAGE_DIR, transform)
-val_dataset = HandSignalDataset(val_df, IMAGE_DIR, transform)
-
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE)
-
-# --- CNN Model ---
+# --- Model definition ---
 class SimpleCNN(nn.Module):
     def __init__(self, num_classes):
         super().__init__()
@@ -82,7 +28,7 @@ class SimpleCNN(nn.Module):
             nn.MaxPool2d(2),
             nn.Conv2d(32, 64, 3, padding=1),
             nn.ReLU(),
-            nn.AdaptiveAvgPool2d((1,1)),
+            nn.AdaptiveAvgPool2d((1, 1)),
             nn.Flatten(),
             nn.Linear(64, num_classes)
         )
@@ -90,55 +36,82 @@ class SimpleCNN(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-# --- Train button ---
-if st.button("🚀 Start Training"):
-    model = SimpleCNN(num_classes=len(classes)).to(device)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=LR)
+# --- Class setup (static for now) ---
+classes = ["signal_1"]
+NUM_CLASSES = len(classes)
 
-    for epoch in range(EPOCHS):
-        model.train()
-        total_loss = 0
+# --- Inference config ---
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+IMG_SIZE = 224
 
-        loop = tqdm(train_loader, desc=f"Epoch {epoch+1}/{EPOCHS}", leave=False)
-        for batch_idx, (images, labels) in enumerate(loop):
-            images, labels = images.to(device), labels.to(device)
-            optimizer.zero_grad()
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-            total_loss += loss.item()
-            loop.set_postfix({
-                "batch": batch_idx + 1,
-                "loss": f"{loss.item():.4f}"
-            })
+transform = transforms.Compose([
+    transforms.Resize((IMG_SIZE, IMG_SIZE)),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.5]*3, std=[0.5]*3)
+])
 
-        avg_loss = total_loss / len(train_loader)
-        st.write(f"🟢 Epoch {epoch+1} - Avg Loss: {avg_loss:.4f}")
+# --- Detection Trigger ---
+if uploaded_model and uploaded_video:
+    x = st.number_input("Bounding box X", 0, 1920, 100)
+    y = st.number_input("Bounding box Y", 0, 1080, 100)
+    w = st.number_input("Box Width", 10, 1920, 224)
+    h = st.number_input("Box Height", 10, 1080, 224)
 
-        # --- Validation ---
-        model.eval()
-        correct = 0
-        total = 0
-        with torch.no_grad():
-            for images, labels in val_loader:
-                images, labels = images.to(device), labels.to(device)
-                outputs = model(images)
-                _, preds = torch.max(outputs, 1)
-                correct += (preds == labels).sum().item()
-                total += labels.size(0)
-        acc = correct / total
-        st.write(f"✅ Validation Accuracy: {acc:.2%}")
+    if st.button("🚀 Run Detection"):
+        with st.spinner("Processing video..."):
 
-    # Save model weights
-    torch.save(model.state_dict(), MODEL_SAVE_PATH)
-    st.success("✅ Model weights saved as .pth")
+            # Save uploaded files temporarily
+            model_path = tempfile.NamedTemporaryFile(delete=False, suffix=".pth").name
+            with open(model_path, "wb") as f:
+                f.write(uploaded_model.read())
 
-    # Save Pickle
-    # Save state_dict and prepare download
-    torch.save(model.state_dict(), MODEL_SAVE_PATH)
-    
-    # Let user download .pth as binary
-    with open(MODEL_SAVE_PATH, "rb") as f:
-        st.download_button("📥 Download Trained Weights (.pth)", f, file_name="hand_signal_cnn.pth")
+            video_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+            with open(video_path, "wb") as f:
+                f.write(uploaded_video.read())
+
+            cap = cv2.VideoCapture(video_path)
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+            output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+            out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+            # Load model
+            model = SimpleCNN(NUM_CLASSES)
+            model.load_state_dict(torch.load(model_path, map_location=DEVICE))
+            model.to(DEVICE)
+            model.eval()
+
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                crop = frame[y:y+h, x:x+w]
+                if crop.size == 0:
+                    continue
+
+                img_pil = Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
+                input_tensor = transform(img_pil).unsqueeze(0).to(DEVICE)
+
+                with torch.no_grad():
+                    output = model(input_tensor)
+                    _, pred = torch.max(output, 1)
+                    label = classes[pred.item()]
+
+                # Annotate frame
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                cv2.putText(frame, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX,
+                            0.9, (0, 255, 0), 2)
+
+                out.write(frame)
+
+            cap.release()
+            out.release()
+
+        st.success("✅ Detection complete!")
+
+        with open(output_path, "rb") as f:
+            st.download_button("📥 Download Annotated Video", f, file_name="annotated_video.mp4")
