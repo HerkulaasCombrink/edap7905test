@@ -1,5 +1,4 @@
 import os
-import pickle
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -18,7 +17,6 @@ EPOCHS = 10
 LR = 0.001
 IMG_SIZE = 224
 MODEL_SAVE_PATH = "hand_signal_cnn.pth"
-PICKLE_SAVE_PATH = "hand_signal_cnn.pkl"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -135,10 +133,6 @@ for epoch in range(EPOCHS):
     acc = correct / total
     print(f"✅ Validation Accuracy: {acc:.2%}")
 
-# --- Save model in .pth and .pkl formats ---
+# --- Save model using state_dict only ---
 torch.save(model.state_dict(), MODEL_SAVE_PATH)
-print(f"\n💾 PyTorch model saved to: {MODEL_SAVE_PATH}")
-
-with open(PICKLE_SAVE_PATH, "wb") as f:
-    pickle.dump(model, f)
-print(f"💾 Pickle model saved to: {PICKLE_SAVE_PATH}")
+print(f"\n💾 Model weights saved to: {MODEL_SAVE_PATH}")
