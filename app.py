@@ -7,10 +7,9 @@ import zipfile
 from PIL import Image
 import numpy as np
 import pandas as pd
-from streamlit_drawable_canvas import st_canvas
 
 st.set_page_config(page_title="Hand Signal Dataset Generator", layout="wide")
-st.title("🖼️ Synthetic Hand Signal Image Generator")
+st.title("🖼️ Synthetic Hand Signal Image Generator (Slider Version)")
 
 # Step 1: Upload video
 uploaded_video = st.file_uploader("Upload a video file", type=["mp4", "mov", "avi"])
@@ -27,52 +26,26 @@ if uploaded_video:
     if not ret:
         st.error("❌ Could not read video.")
     else:
-        # Convert first frame to RGB
+        # Convert frame to RGB for display
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        st.subheader("Step 1: Define bounding box on the first frame")
 
-        # Resize frame for canvas (maintain aspect ratio)
-        canvas_display_width = 800
-        scale_x = canvas_display_width / frame.shape[1]
-        scaled_height = int(frame.shape[0] * scale_x)
+        # Show the first frame
+        st.image(frame_rgb, caption="First frame of video", use_column_width=True)
 
-        resized_frame = cv2.resize(frame_rgb, (canvas_display_width, scaled_height))
-        resized_pil = Image.fromarray(resized_frame)
+        # Sliders to define bounding box
+        img_h, img_w = frame.shape[:2]
 
-        st.subheader("Step 1: Draw a bounding box on the first frame")
+        x = st.slider("X (left)", 0, img_w - 1, int(img_w * 0.25))
+        y = st.slider("Y (top)", 0, img_h - 1, int(img_h * 0.25))
+        w = st.slider("Width", 1, img_w - x, int(img_w * 0.5))
+        h = st.slider("Height", 1, img_h - y, int(img_h * 0.5))
 
-        # Draw box on canvas
-        canvas_result = st_canvas(
-            fill_color="rgba(255, 0, 0, 0.3)",
-            stroke_width=3,
-            background_image=resized_pil,
-            update_streamlit=True,
-            height=scaled_height,
-            width=canvas_display_width,
-            drawing_mode="rect",
-            key="canvas",
-        )
+        st.session_state.coords = (x, y, w, h)
+        st.success(f"Box selected: x={x}, y={y}, w={w}, h={h}")
 
-        # Extract and scale coordinates
-        if canvas_result.json_data and len(canvas_result.json_data["objects"]) > 0:
-            obj = canvas_result.json_data["objects"][0]
-            x_scaled = int(obj["left"])
-            y_scaled = int(obj["top"])
-            w_scaled = int(obj["width"])
-            h_scaled = int(obj["height"])
-
-            # Scale back to original resolution
-            x = int(x_scaled / scale_x)
-            y = int(y_scaled / scale_x)
-            w = int(w_scaled / scale_x)
-            h = int(h_scaled / scale_x)
-
-            st.session_state.coords = (x, y, w, h)
-            st.success(f"Box drawn: x={x}, y={y}, w={w}, h={h}")
-
-        # Process video
-        if 'coords' in st.session_state and st.button("📦 Generate Dataset from Video"):
-            x, y, w, h = st.session_state.coords
-
+        # Process all frames
+        if st.button("📦 Generate Dataset from Video"):
             output_dir = tempfile.mkdtemp()
             image_dir = os.path.join(output_dir, "images")
             os.makedirs(image_dir, exist_ok=True)
@@ -94,7 +67,7 @@ if uploaded_video:
                 try:
                     crop_resized = cv2.resize(crop, (224, 224))
                 except:
-                    continue  # Skip if crop is out of bounds
+                    continue  # Skip if resize fails
 
                 img_pil = Image.fromarray(cv2.cvtColor(crop_resized, cv2.COLOR_BGR2RGB))
 
@@ -106,7 +79,7 @@ if uploaded_video:
                 frame_idx += 1
                 pbar.progress(min(frame_idx / total_frames, 1.0))
 
-            # Save CSV
+            # Save labels CSV
             labels_df = pd.DataFrame(labels)
             labels_df.to_csv(os.path.join(output_dir, "labels.csv"), index=False)
 
