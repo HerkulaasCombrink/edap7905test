@@ -9,6 +9,7 @@ xlml
 fpdf
 image
 geopy
+cv2
 #random
 #time
 #pygame
