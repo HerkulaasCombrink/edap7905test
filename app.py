@@ -1,111 +1,144 @@
-import streamlit as st
-import cv2
-import tempfile
 import os
-import zipfile
-from PIL import Image
-import numpy as np
+import pickle
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torchvision import transforms
+from torch.utils.data import DataLoader
 import pandas as pd
+from sklearn.model_selection import train_test_split
+from PIL import Image
+from tqdm import tqdm
 
-st.set_page_config(page_title="Hand Signal Dataset Generator", layout="wide")
-st.title("🖼️ Hand Signal Image Generator (Slider + Preview)")
+# --- Config ---
+IMAGE_DIR = "images"
+LABELS_FILE = "labels.csv"
+BATCH_SIZE = 32
+EPOCHS = 10
+LR = 0.001
+IMG_SIZE = 224
+MODEL_SAVE_PATH = "hand_signal_cnn.pth"
+PICKLE_SAVE_PATH = "hand_signal_cnn.pkl"
 
-# Step 1: Upload video
-uploaded_video = st.file_uploader("📤 Upload a video file", type=["mp4", "mov", "avi"])
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-if uploaded_video:
-    tfile = tempfile.NamedTemporaryFile(delete=False)
-    tfile.write(uploaded_video.read())
-    video_path = tfile.name
+# --- Load labels ---
+df = pd.read_csv(LABELS_FILE)
+classes = sorted(df["label"].unique().tolist())
+class_to_idx = {cls: idx for idx, cls in enumerate(classes)}
+df["label_idx"] = df["label"].map(class_to_idx)
 
-    # Read video using OpenCV
-    cap = cv2.VideoCapture(video_path)
-    ret, frame = cap.read()
+# --- Train/val split ---
+train_df, val_df = train_test_split(df, test_size=0.2, stratify=df["label"], random_state=42)
 
-    if not ret:
-        st.error("❌ Could not read video.")
-    else:
-        # Convert frame to RGB for display
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        st.subheader("Step 1: Select Bounding Box")
+# --- Custom Dataset ---
+class HandSignalDataset(torch.utils.data.Dataset):
+    def __init__(self, dataframe, image_dir, transform=None):
+        self.df = dataframe
+        self.image_dir = image_dir
+        self.transform = transform
 
-        # Show the first frame
-        st.image(frame_rgb, caption="📷 First Frame of Video", use_column_width=True)
+    def __len__(self):
+        return len(self.df)
 
-        # Sliders to define bounding box
-        img_h, img_w = frame.shape[:2]
+    def __getitem__(self, idx):
+        row = self.df.iloc[idx]
+        img_path = os.path.join(self.image_dir, row["filename"])
+        img = Image.open(img_path).convert("RGB")
+        label = row["label_idx"]
 
-        st.write("### Bounding Box Coordinates (sliders)")
-        x = st.slider("🟥 X (left)", 0, img_w - 1, int(img_w * 0.25))
-        y = st.slider("🟥 Y (top)", 0, img_h - 1, int(img_h * 0.25))
-        w = st.slider("🟥 Width", 1, img_w - x, int(img_w * 0.5))
-        h = st.slider("🟥 Height", 1, img_h - y, int(img_h * 0.5))
+        if self.transform:
+            img = self.transform(img)
 
-        st.session_state.coords = (x, y, w, h)
-        st.info(f"📐 Box selected: x={x}, y={y}, w={w}, h={h}")
+        return img, label
 
-        # Show cropped preview
-        cropped_preview = frame[y:y+h, x:x+w]
-        if cropped_preview.size > 0:
-            preview_resized = cv2.resize(cropped_preview, (224, 224))
-            preview_rgb = cv2.cvtColor(preview_resized, cv2.COLOR_BGR2RGB)
-            st.image(preview_rgb, caption="🖼️ Cropped Preview (224x224)", channels="RGB")
-        else:
-            st.warning("⚠️ Cropped area is empty or out of bounds. Please adjust your sliders.")
+# --- Transforms ---
+transform = transforms.Compose([
+    transforms.Resize((IMG_SIZE, IMG_SIZE)),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.5]*3, std=[0.5]*3)
+])
 
-        # Generate dataset
-        if st.button("📦 Generate Dataset from Video"):
-            output_dir = tempfile.mkdtemp()
-            image_dir = os.path.join(output_dir, "images")
-            os.makedirs(image_dir, exist_ok=True)
+# --- Datasets & Loaders ---
+train_dataset = HandSignalDataset(train_df, IMAGE_DIR, transform)
+val_dataset = HandSignalDataset(val_df, IMAGE_DIR, transform)
 
-            labels = []
+train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE)
 
-            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-            frame_idx = 0
-            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            pbar = st.progress(0)
+# --- CNN Model ---
+class SimpleCNN(nn.Module):
+    def __init__(self, num_classes):
+        super().__init__()
+        self.model = nn.Sequential(
+            nn.Conv2d(3, 16, 3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
 
-            while True:
-                ret, frame = cap.read()
-                if not ret:
-                    break
+            nn.Conv2d(16, 32, 3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
 
-                # Crop and resize
-                crop = frame[y:y+h, x:x+w]
-                if crop.size == 0 or crop.shape[0] < 5 or crop.shape[1] < 5:
-                    continue  # skip invalid crops
+            nn.Conv2d(32, 64, 3, padding=1),
+            nn.ReLU(),
+            nn.AdaptiveAvgPool2d((1,1)),
 
-                try:
-                    crop_resized = cv2.resize(crop, (224, 224))
-                except:
-                    continue  # skip if resize fails
+            nn.Flatten(),
+            nn.Linear(64, num_classes)
+        )
 
-                img_pil = Image.fromarray(cv2.cvtColor(crop_resized, cv2.COLOR_BGR2RGB))
+    def forward(self, x):
+        return self.model(x)
 
-                filename = f"signal_1_frame_{frame_idx:04d}.jpg"
-                img_pil.save(os.path.join(image_dir, filename))
-                labels.append({"filename": filename, "label": "signal_1"})
+model = SimpleCNN(num_classes=len(classes)).to(device)
 
-                frame_idx += 1
-                pbar.progress(min(frame_idx / total_frames, 1.0))
+# --- Training Setup ---
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=LR)
 
-            # Save labels CSV
-            labels_df = pd.DataFrame(labels)
-            labels_df.to_csv(os.path.join(output_dir, "labels.csv"), index=False)
+# --- Training Loop ---
+for epoch in range(EPOCHS):
+    model.train()
+    total_loss = 0
 
-            # Zip everything
-            zip_path = os.path.join(output_dir, "dataset.zip")
-            with zipfile.ZipFile(zip_path, 'w') as zipf:
-                for root, _, files in os.walk(output_dir):
-                    for file in files:
-                        if file != "dataset.zip":
-                            zipf.write(os.path.join(root, file),
-                                       os.path.relpath(os.path.join(root, file), output_dir))
+    loop = tqdm(train_loader, desc=f"Epoch {epoch+1}/{EPOCHS}", leave=False)
+    for batch_idx, (images, labels) in enumerate(loop):
+        images, labels = images.to(device), labels.to(device)
 
-            st.success("✅ Dataset created!")
+        optimizer.zero_grad()
+        outputs = model(images)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
 
-            with open(zip_path, "rb") as f:
-                st.download_button("📥 Download ZIP", f, file_name="hand_signal_dataset.zip")
+        total_loss += loss.item()
 
-            cap.release()
+        loop.set_postfix({
+            "batch": batch_idx + 1,
+            "loss": f"{loss.item():.4f}"
+        })
+
+    avg_loss = total_loss / len(train_loader)
+    print(f"\n🟢 Epoch {epoch+1} completed - Avg Loss: {avg_loss:.4f}")
+
+    # --- Validation accuracy ---
+    model.eval()
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for images, labels in val_loader:
+            images, labels = images.to(device), labels.to(device)
+            outputs = model(images)
+            _, preds = torch.max(outputs, 1)
+            correct += (preds == labels).sum().item()
+            total += labels.size(0)
+    acc = correct / total
+    print(f"✅ Validation Accuracy: {acc:.2%}")
+
+# --- Save model in .pth and .pkl formats ---
+torch.save(model.state_dict(), MODEL_SAVE_PATH)
+print(f"\n💾 PyTorch model saved to: {MODEL_SAVE_PATH}")
+
+with open(PICKLE_SAVE_PATH, "wb") as f:
+    pickle.dump(model, f)
+print(f"💾 Pickle model saved to: {PICKLE_SAVE_PATH}")
