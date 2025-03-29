@@ -136,8 +136,9 @@ if st.button("🚀 Start Training"):
     st.success("✅ Model weights saved as .pth")
 
     # Save Pickle
-    with open(PICKLE_SAVE_PATH, "wb") as f:
-        pickle.dump(model, f)
-
-    with open(PICKLE_SAVE_PATH, "rb") as f:
-        st.download_button("📥 Download Trained Model (.pkl)", f, file_name="hand_signal_cnn.pkl")
+    # Save state_dict and prepare download
+    torch.save(model.state_dict(), MODEL_SAVE_PATH)
+    
+    # Let user download .pth as binary
+    with open(MODEL_SAVE_PATH, "rb") as f:
+        st.download_button("📥 Download Trained Weights (.pth)", f, file_name="hand_signal_cnn.pth")
