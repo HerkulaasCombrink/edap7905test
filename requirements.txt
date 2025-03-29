@@ -9,7 +9,11 @@ xlml
 fpdf
 image
 geopy
-cv2
+streamlit
+opencv-python
+pillow
+numpy
+pandas
 #random
 #time
 #pygame
