@@ -27,89 +27,101 @@ if uploaded_video:
     if not ret:
         st.error("❌ Could not read video.")
     else:
-        # Show first frame to draw bounding box
+        # Convert first frame to RGB
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        # Resize frame for canvas (maintain aspect ratio)
+        canvas_display_width = 800
+        scale_x = canvas_display_width / frame.shape[1]
+        scaled_height = int(frame.shape[0] * scale_x)
+
+        resized_frame = cv2.resize(frame_rgb, (canvas_display_width, scaled_height))
+        resized_pil = Image.fromarray(resized_frame)
+
         st.subheader("Step 1: Draw a bounding box on the first frame")
 
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame_pil = Image.fromarray(frame_rgb)
-
+        # Draw box on canvas
         canvas_result = st_canvas(
-            fill_color="rgba(255, 0, 0, 0.3)",  # Transparent red
+            fill_color="rgba(255, 0, 0, 0.3)",
             stroke_width=3,
-            background_image=frame_pil,
+            background_image=resized_pil,
             update_streamlit=True,
-            height=frame.shape[0],
-            width=frame.shape[1],
+            height=scaled_height,
+            width=canvas_display_width,
             drawing_mode="rect",
             key="canvas",
         )
 
+        # Extract and scale coordinates
         if canvas_result.json_data and len(canvas_result.json_data["objects"]) > 0:
             obj = canvas_result.json_data["objects"][0]
-            left = int(obj["left"])
-            top = int(obj["top"])
-            width = int(obj["width"])
-            height = int(obj["height"])
-            st.session_state.coords = (left, top, width, height)
-            st.success(f"Box drawn: x={left}, y={top}, w={width}, h={height}")
+            x_scaled = int(obj["left"])
+            y_scaled = int(obj["top"])
+            w_scaled = int(obj["width"])
+            h_scaled = int(obj["height"])
 
-        if 'coords' in st.session_state:
+            # Scale back to original resolution
+            x = int(x_scaled / scale_x)
+            y = int(y_scaled / scale_x)
+            w = int(w_scaled / scale_x)
+            h = int(h_scaled / scale_x)
+
+            st.session_state.coords = (x, y, w, h)
+            st.success(f"Box drawn: x={x}, y={y}, w={w}, h={h}")
+
+        # Process video
+        if 'coords' in st.session_state and st.button("📦 Generate Dataset from Video"):
             x, y, w, h = st.session_state.coords
 
-            if st.button("📦 Generate Dataset from Video"):
-                # Output dirs
-                output_dir = tempfile.mkdtemp()
-                image_dir = os.path.join(output_dir, "images")
-                os.makedirs(image_dir, exist_ok=True)
+            output_dir = tempfile.mkdtemp()
+            image_dir = os.path.join(output_dir, "images")
+            os.makedirs(image_dir, exist_ok=True)
 
-                labels = []
+            labels = []
 
-                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                frame_idx = 0
-                total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-                pbar = st.progress(0)
+            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            frame_idx = 0
+            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            pbar = st.progress(0)
 
-                while True:
-                    ret, frame = cap.read()
-                    if not ret:
-                        break
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
 
-                    # Crop and resize
-                    crop = frame[y:y+h, x:x+w]
+                # Crop and resize
+                crop = frame[y:y+h, x:x+w]
+                try:
                     crop_resized = cv2.resize(crop, (224, 224))
-                    img_pil = Image.fromarray(cv2.cvtColor(crop_resized, cv2.COLOR_BGR2RGB))
+                except:
+                    continue  # Skip if crop is out of bounds
 
-                    # Save image
-                    filename = f"signal_1_frame_{frame_idx:04d}.jpg"
-                    img_pil.save(os.path.join(image_dir, filename))
-                    labels.append({"filename": filename, "label": "signal_1"})
+                img_pil = Image.fromarray(cv2.cvtColor(crop_resized, cv2.COLOR_BGR2RGB))
 
-                    frame_idx += 1
-                    pbar.progress(min(frame_idx / total_frames, 1.0))
+                # Save image
+                filename = f"signal_1_frame_{frame_idx:04d}.jpg"
+                img_pil.save(os.path.join(image_dir, filename))
+                labels.append({"filename": filename, "label": "signal_1"})
 
-                # Save labels CSV
-                labels_df = pd.DataFrame(labels)
-                labels_df.to_csv(os.path.join(output_dir, "labels.csv"), index=False)
+                frame_idx += 1
+                pbar.progress(min(frame_idx / total_frames, 1.0))
 
-                # Zip everything
-                zip_path = os.path.join(output_dir, "dataset.zip")
-                with zipfile.ZipFile(zip_path, 'w') as zipf:
-                    for root, _, files in os.walk(output_dir):
-                        for file in files:
-                            if file != "dataset.zip":
-                                zipf.write(os.path.join(root, file),
-                                           os.path.relpath(os.path.join(root, file), output_dir))
+            # Save CSV
+            labels_df = pd.DataFrame(labels)
+            labels_df.to_csv(os.path.join(output_dir, "labels.csv"), index=False)
 
-                st.success("✅ Dataset created!")
+            # Zip everything
+            zip_path = os.path.join(output_dir, "dataset.zip")
+            with zipfile.ZipFile(zip_path, 'w') as zipf:
+                for root, _, files in os.walk(output_dir):
+                    for file in files:
+                        if file != "dataset.zip":
+                            zipf.write(os.path.join(root, file),
+                                       os.path.relpath(os.path.join(root, file), output_dir))
 
-                with open(zip_path, "rb") as f:
-                    st.download_button("📥 Download ZIP", f, file_name="hand_signal_dataset.zip")
-
-                cap.release()
-
+            st.success("✅ Dataset created!")
 
             with open(zip_path, "rb") as f:
-                st.download_button("📦 Download ZIP", f, file_name="hand_signal_dataset.zip")
+                st.download_button("📥 Download ZIP", f, file_name="hand_signal_dataset.zip")
 
-            # Clean up
             cap.release()
