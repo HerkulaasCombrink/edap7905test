@@ -1,11 +1,8 @@
-streamlit>=1.29
-opencv-python-headless>=4.5.5.64
+streamlit
 matplotlib
 pillow
 numpy
 pandas
-torch>=2.0
-torchvision
 scikit-learn
 tqdm
 PIL
