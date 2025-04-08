@@ -1,13 +1,8 @@
 streamlit
 matplotlib
-pillow
 numpy
 pandas
 tqdm
-PIL
-fpdf
-io
-os
 networkx
 time
 tempfile
