@@ -307,8 +307,4 @@ if st.sidebar.button("Start Simulation"):
         mime="text/csv",
         key="csv_download_button"
     )
-    # Save plot to file (must be saved to disk for FPDF)
-    plot_path = os.path.join(tempfile.gettempdir(), "plot.png")
-    fig.savefig(plot_path, format="png")
-
  
