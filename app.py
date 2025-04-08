@@ -5,11 +5,11 @@ import numpy as np
 import pandas as pd
 import random
 import time
-from fpdf import FPDF
-import io
-from PIL import Image
+
+
+
 import tempfile
-import os
+
 
 # Streamlit Interface Initialization Section 2
 st.title("Misinformation Dynamic Network Simulation")
