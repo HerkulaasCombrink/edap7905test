@@ -2,7 +2,4 @@ streamlit
 matplotlib
 numpy
 pandas
-tqdm
 networkx
-time
-tempfile
