@@ -8,3 +8,4 @@ PIL
 fpdf
 io
 os
+networkx
