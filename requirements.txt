@@ -3,4 +3,3 @@ matplotlib
 numpy
 pandas
 networkx
-Python==>3.1
