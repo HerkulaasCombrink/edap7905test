@@ -7,3 +7,4 @@ tqdm
 PIL
 fpdf
 io
+os
