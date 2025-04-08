@@ -1,5 +1,6 @@
 streamlit>=1.29
 opencv-python-headless>=4.5.5.64
+matplotlib
 pillow
 numpy
 pandas
