@@ -1,6 +1,3 @@
-#Final code for book
-# Raw First Round Book Code 22_03_2025
-# Imports and Setup Section 1
 import streamlit as st
 import networkx as nx
 import matplotlib.pyplot as plt
