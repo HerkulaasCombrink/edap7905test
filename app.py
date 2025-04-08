@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import random
 import time
-from fpdf import FPDF
+#from fpdf import FPDF
 import io
 from PIL import Image
 import tempfile
@@ -316,48 +316,4 @@ if st.sidebar.button("Start Simulation"):
     plot_path = os.path.join(tempfile.gettempdir(), "plot.png")
     fig.savefig(plot_path, format="png")
 
-    # Create PDF and build content
-    # ✅ After all the PDF content has been added
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, "Misinformation Simulation Report", ln=True)
-
-    pdf.set_font("Arial", "", 12)
-    pdf.ln(5)
-    pdf.cell(0, 10, "Simulation Parameters:", ln=True)
-
-    # Add parameters
-    for param, value in zip(params_df["Parameter"], params_df["Value"]):
-        pdf.cell(0, 10, f"{param}: {value}", ln=True)
-
-    pdf.ln(5)
-    pdf.cell(0, 10, "Final Belief Counts:", ln=True)
-    pdf.cell(0, 10, f"Believers: {belief_counts['Believers'][-1]}", ln=True)
-    pdf.cell(0, 10, f"Skeptics: {belief_counts['Skeptics'][-1]}", ln=True)
-    pdf.cell(0, 10, f"Neutrals: {belief_counts['Neutrals'][-1]}", ln=True)
-    pdf.cell(0, 10, f"Influencers: {belief_counts['Influencers'][-1]}", ln=True)
-    pdf.image(plot_path, x=10, w=180)
-    # Save final figure as image
-    img_path = "plot_final.png"
-    fig.savefig(img_path, format="png")
-    pdf.image(img_path, x=10, y=None, w=180)
-
-    # ✅ Now write PDF to temporary file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
-        pdf.output(tmp_pdf.name)
-        tmp_pdf_path = tmp_pdf.name
-
-    # ✅ Read and serve the PDF to the user
-    with open(tmp_pdf_path, "rb") as f:
-        st.download_button(
-            label="📄 Download Full PDF Report",
-            data=f.read(),
-            file_name="misinformation_simulation_report.pdf",
-            mime="application/pdf",
-            key="pdf_download_button"
-        )
-
-    # ✅ Optional cleanup
-    os.remove(tmp_pdf_path)
-    os.remove(plot_path)
+ 
