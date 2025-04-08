@@ -5,5 +5,4 @@ numpy
 pandas
 tqdm
 PIL
-FPDF
 fpdf
