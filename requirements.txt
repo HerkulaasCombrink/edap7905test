@@ -6,4 +6,4 @@ pandas
 scikit-learn
 tqdm
 PIL
-fpdf
+FPDF
