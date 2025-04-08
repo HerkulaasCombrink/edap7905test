@@ -6,3 +6,4 @@ pandas
 tqdm
 PIL
 fpdf
+io
