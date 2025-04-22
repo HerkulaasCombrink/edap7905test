@@ -21,3 +21,4 @@ Build and visualise your own Bayesian Network using `pgmpy`.
 Example:
 ```python
 [('A', 'B'), ('B', 'C')]
+""")
