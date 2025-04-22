@@ -22,7 +22,7 @@ Example:
 ```python
 [('A', 'B'), ('B', 'C')]
 """)
-if isinstance(parsed, list) and all(isinstance(e, tuple) and len(e) == 2 for e in parsed):
+    if isinstance(parsed, list) and all(isinstance(e, tuple) and len(e) == 2 for e in parsed):
         st.success("✅ Edges parsed successfully!")
 
         model = BayesianNetwork(parsed)
@@ -39,7 +39,8 @@ if isinstance(parsed, list) and all(isinstance(e, tuple) and len(e) == 2 for e i
             arrowsize=20
         )
         st.pyplot(fig)
-else:
+    else:
         st.warning("⚠️ Input must be a list of 2-element tuples like [('A', 'B')].")
+
 except Exception as e:
     st.error(f"❌ Could not parse your input. Please check the format.\n\n**Error:** {e}")
