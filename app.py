@@ -23,7 +23,9 @@ Example:
 [('A', 'B'), ('B', 'C')]
 """)
 user_input = st.text_area("✍️ Type your edge list here:")
-if user_input: try: 
+if user_input: 
+    try: 
+        parsed = ast.literal_eval(user_input)
     # Validate and construct network
     if isinstance(parsed, list) and all(isinstance(e, tuple) and len(e) == 2 for e in parsed):
         st.success("✅ Edges parsed successfully!")
