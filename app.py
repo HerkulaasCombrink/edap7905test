@@ -1,5 +1,5 @@
 import streamlit as st
-from pgmpy.models import BayesianNetwork  # ✅ updated import
+from pgmpy.models import DiscreteBayesianNetwork
 import networkx as nx
 import matplotlib.pyplot as plt
 import ast
@@ -30,7 +30,7 @@ if user_input:
             st.success("✅ Edges parsed successfully!")
 
             # Build the Bayesian network (optional if you just want to draw)
-            model = BayesianNetwork(parsed)
+            model = DiscreteBayesianNetwork(parsed)
 
             # Build a NetworkX DiGraph for visualization
             G = nx.DiGraph()
