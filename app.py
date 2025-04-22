@@ -9,7 +9,6 @@ st.set_page_config(page_title="Bayesian Network Builder", layout="centered")
 
 # App title and instructions
 st.title("🧠 Bayesian Network Builder")
-
 st.markdown(
     """
 Build and visualise your own Bayesian Network using `pgmpy`.
@@ -21,34 +20,51 @@ Build and visualise your own Bayesian Network using `pgmpy`.
 Example:
 ```python
 [('A', 'B'), ('B', 'C')]
-""")
+```"""
+)
+
 user_input = st.text_area("✍️ Type your edge list here:")
 if user_input:
     try:
         parsed = ast.literal_eval(user_input)
+
+        # Validate format
         if isinstance(parsed, list) and all(isinstance(e, tuple) and len(e) == 2 for e in parsed):
             st.success("✅ Edges parsed successfully!")
 
-            # Build the Bayesian network (optional if you just want to draw)
+            # (Optional) build the pgmpy model to check structure
             model = DiscreteBayesianNetwork(parsed)
 
             # Build a NetworkX DiGraph for visualization
             G = nx.DiGraph()
             G.add_edges_from(parsed)
 
-            # Draw using a spring layout
+            # Compute layout
             pos = nx.spring_layout(G)
-            fig, ax = plt.subplots()
+
+            # Create Matplotlib figure
+            fig, ax = plt.subplots(figsize=(6, 6))
+
+            # Draw nodes and labels
             nx.draw_networkx_nodes(G, pos, node_color="lightblue", node_size=2000, ax=ax)
             nx.draw_networkx_labels(G, pos, font_size=14, font_weight="bold", ax=ax)
-            nx.draw_networkx_edges(
-                G, pos,
-                arrowstyle='-|>',
-                arrowsize=20,
-                connectionstyle='arc3,rad=0.1',
-                ax=ax
-            )
+
+            # Draw arrows manually
+            for src, dst in G.edges():
+                ax.annotate(
+                    "",
+                    xy=pos[dst],
+                    xytext=pos[src],
+                    arrowprops=dict(
+                        arrowstyle="->",
+                        lw=2,
+                        shrinkA=15,
+                        shrinkB=15
+                    )
+                )
+
             ax.set_axis_off()
+            # Render in Streamlit
             st.pyplot(fig, use_container_width=True)
 
         else:
