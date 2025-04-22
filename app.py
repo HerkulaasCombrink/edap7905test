@@ -22,15 +22,11 @@ Example:
 ```python
 [('A', 'B'), ('B', 'C')]
 """)
- # Validate structure: must be list of 2-item tuples
     if isinstance(parsed, list) and all(isinstance(e, tuple) and len(e) == 2 for e in parsed):
-        user_edges = parsed
         st.success("✅ Edges parsed successfully!")
 
-        # Build the Bayesian Network model
-        model = BayesianNetwork(user_edges)
+        model = BayesianNetwork(parsed)
 
-        # Create and render the network graph
         fig, ax = plt.subplots()
         nx.draw(
             model,
@@ -45,6 +41,5 @@ Example:
         st.pyplot(fig)
     else:
         st.warning("⚠️ Input must be a list of 2-element tuples like [('A', 'B')].")
-
 except Exception as e:
     st.error(f"❌ Could not parse your input. Please check the format.\n\n**Error:** {e}")
