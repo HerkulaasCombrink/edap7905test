@@ -49,5 +49,5 @@ if user_input:
         else:
             st.warning("⚠️ Input must be a list of 2-element tuples like [('A', 'B')].")
 
-        except Exception as e:
-            st.error(f"❌ Could not parse your input. Please check the format.\n\n**Error:** {e}")
+    except Exception as e:
+        st.error(f"❌ Could not parse your input. Please check the format.\n\n**Error:** {e}")
