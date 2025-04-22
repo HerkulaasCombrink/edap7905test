@@ -16,7 +16,7 @@ choice = st.radio(
 
 # Map each choice to a URL
 image_urls = {
-    "Network Example": "https://via.placeholder.com/600x300?text=Network+Example",
+    "Network Example1": "https://www.mdpi.com/mathematics/mathematics-11-03344/article_deploy/html/images/mathematics-11-03344-g001-550.jpg",
     "Bayesian Diagram": "https://via.placeholder.com/600x300?text=Bayesian+Diagram",
     "Placeholders": "https://via.placeholder.com/600x300?text=Placeholder+Image"
 }
