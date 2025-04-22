@@ -23,10 +23,10 @@ Example:
 ```"""
 )
 
-# Primary edge‐list input
+# Text area for user input
 user_input = st.text_area("✍️ Type your edge list here:")
 
-# Process button
+# The button that triggers network processing
 if st.button("Process Network"):
     if not user_input:
         st.warning("⚠️ Please enter a list of 2‑element tuples before processing.")
@@ -77,13 +77,6 @@ if st.button("Process Network"):
                 col1, col2, col3 = st.columns([1, 2, 1])
                 with col2:
                     st.pyplot(fig, use_container_width=True)
-
-                # ───── Additional inputs under the button ─────
-                extra1 = st.text_input("Additional Input 1")
-                extra2 = st.text_input("Additional Input 2")
-
-                # Load an image from the internet (via Markdown)
-                st.markdown("![Example Network](https://via.placeholder.com/600x300)")
 
             else:
                 st.error("❌ Input must be a Python list of 2‑element tuples, e.g. [('A','B'),('B','C')].")
