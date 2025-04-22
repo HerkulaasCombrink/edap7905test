@@ -22,6 +22,7 @@ Example:
 ```python
 [('A', 'B'), ('B', 'C')]
 """)
+user_input = st.text_area("✍️ Type your edge list here:")
 if isinstance(parsed, list) and all(isinstance(e, tuple) and len(e) == 2 for e in parsed):
         st.success("✅ Edges parsed successfully!")
 
