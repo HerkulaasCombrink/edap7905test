@@ -27,27 +27,27 @@ if user_input:
     try: 
         parsed = ast.literal_eval(user_input)
     # Validate and construct network
-    if isinstance(parsed, list) and all(isinstance(e, tuple) and len(e) == 2 for e in parsed):
-        st.success("✅ Edges parsed successfully!")
+        if isinstance(parsed, list) and all(isinstance(e, tuple) and len(e) == 2 for e in parsed):
+            st.success("✅ Edges parsed successfully!")
+    
+            # Create the Bayesian Network
+            model = BayesianNetwork(parsed)
+    
+            # Draw the network
+            fig, ax = plt.subplots()
+            nx.draw(
+                model,
+                with_labels=True,
+                node_color="lightblue",
+                node_size=2000,
+                font_size=14,
+                font_weight="bold",
+                arrows=True,
+                arrowsize=20
+            )
+            st.pyplot(fig)
+        else:
+            st.warning("⚠️ Input must be a list of 2-element tuples like [('A', 'B')].")
 
-        # Create the Bayesian Network
-        model = BayesianNetwork(parsed)
-
-        # Draw the network
-        fig, ax = plt.subplots()
-        nx.draw(
-            model,
-            with_labels=True,
-            node_color="lightblue",
-            node_size=2000,
-            font_size=14,
-            font_weight="bold",
-            arrows=True,
-            arrowsize=20
-        )
-        st.pyplot(fig)
-    else:
-        st.warning("⚠️ Input must be a list of 2-element tuples like [('A', 'B')].")
-
-except Exception as e:
-    st.error(f"❌ Could not parse your input. Please check the format.\n\n**Error:** {e}")
+        except Exception as e:
+            st.error(f"❌ Could not parse your input. Please check the format.\n\n**Error:** {e}")
