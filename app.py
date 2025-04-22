@@ -23,30 +23,34 @@ Example:
 [('A', 'B'), ('B', 'C')]
 """)
 user_input = st.text_area("✍️ Type your edge list here:")
-if user_input: 
-    try: 
+if user_input:
+    try:
         parsed = ast.literal_eval(user_input)
-    # Validate and construct network
         if isinstance(parsed, list) and all(isinstance(e, tuple) and len(e) == 2 for e in parsed):
             st.success("✅ Edges parsed successfully!")
-    
-            # Create the Bayesian Network
+
+            # Build the Bayesian network (optional if you just want to draw)
             model = BayesianNetwork(parsed)
+
+            # Build a NetworkX DiGraph for visualization
             G = nx.DiGraph()
             G.add_edges_from(parsed)
-            # Draw the network
+
+            # Draw using a spring layout
+            pos = nx.spring_layout(G)
             fig, ax = plt.subplots()
-            nx.draw(
-                G,
-                with_labels=True,
-                node_color="lightblue",
-                node_size=2000,
-                font_size=14,
-                font_weight="bold",
-                arrows=True,
-                arrowsize=20
+            nx.draw_networkx_nodes(G, pos, node_color="lightblue", node_size=2000, ax=ax)
+            nx.draw_networkx_labels(G, pos, font_size=14, font_weight="bold", ax=ax)
+            nx.draw_networkx_edges(
+                G, pos,
+                arrowstyle='-|>',
+                arrowsize=20,
+                connectionstyle='arc3,rad=0.1',
+                ax=ax
             )
-            st.pyplot(fig)
+            ax.set_axis_off()
+            st.pyplot(fig, use_container_width=True)
+
         else:
             st.warning("⚠️ Input must be a list of 2-element tuples like [('A', 'B')].")
 
