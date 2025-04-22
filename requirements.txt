@@ -1,3 +1,4 @@
+python-3.10
 streamlit>=1.32.0
 bnlearn==0.2.8
 matplotlib>=3.7.0
