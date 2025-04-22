@@ -64,8 +64,11 @@ if user_input:
                 )
 
             ax.set_axis_off()
-            # Render in Streamlit
-            st.pyplot(fig, use_container_width=True)
+
+            # Centre the plot in the page
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                st.pyplot(fig, use_container_width=True)
 
         else:
             st.warning("⚠️ Input must be a list of 2-element tuples like [('A', 'B')].")
