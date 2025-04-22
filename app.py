@@ -1,5 +1,5 @@
 import streamlit as st
-from pgmpy.models import BayesianNetwork
+from pgmpy.models import DiscreteBayesianNetwork  # ✅ updated import
 import networkx as nx
 import matplotlib.pyplot as plt
 import ast
