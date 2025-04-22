@@ -80,11 +80,12 @@ if st.button("Process Network"):
 
         except Exception as e:
             st.error(f"❌ Could not parse your input. Please check the format.\n\n**Error:** {e}")
+
 # Text area for user input
 user_input2 = st.text_area("✍️ Type your edge list here:")
 
 # The button that triggers network processing
-if st.button("Process Network"):
+if st.button("Process Network2"):
     if not user_input2:
         st.warning("⚠️ Please enter a list of 2‑element tuples before processing.")
     else:
