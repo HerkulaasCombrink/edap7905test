@@ -1,3 +1,4 @@
-streamlit>=1.32.0
-bnlearn==0.2.8
-matplotlib>=3.7.0
+streamlit
+pgmpy
+matplotlib
+networkx
