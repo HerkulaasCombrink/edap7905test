@@ -32,11 +32,12 @@ if user_input:
     
             # Create the Bayesian Network
             model = BayesianNetwork(parsed)
-    
+            G = nx.DiGraph()
+            G.add_edges_from(parsed)
             # Draw the network
             fig, ax = plt.subplots()
             nx.draw(
-                model,
+                G,
                 with_labels=True,
                 node_color="lightblue",
                 node_size=2000,
