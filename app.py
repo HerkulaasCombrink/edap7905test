@@ -7,28 +7,6 @@ import ast
 # Configure Streamlit page
 st.set_page_config(page_title="Bayesian Network Builder", layout="centered")
 
-# ─── Top: Three radio options to pick an image ───
-st.markdown("## Select a background image")
-choice = st.radio(
-    "",
-    ("Network Example", "Bayesian Diagram", "Placeholders")
-)
-
-# Map each choice to a URL
-image_urls = {
-    "Network Example1": "https://www.mdpi.com/mathematics/mathematics-11-03344/article_deploy/html/images/mathematics-11-03344-g001-550.jpg",
-    "Bayesian Diagram": "https://via.placeholder.com/600x300?text=Bayesian+Diagram",
-    "Placeholders": "https://via.placeholder.com/600x300?text=Placeholder+Image"
-}
-
-# Display the selected image, centered
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    st.image(image_urls[choice], caption=choice, use_column_width=True)
-
-
-# ─── Rest of your app ───
-
 # App title and instructions
 st.title("🧠 Bayesian Network Builder")
 st.markdown(
@@ -45,10 +23,10 @@ Example:
 ```"""
 )
 
-# Primary edge‐list input
+# Text area for user input
 user_input = st.text_area("✍️ Type your edge list here:")
 
-# Process button
+# The button that triggers network processing
 if st.button("Process Network"):
     if not user_input:
         st.warning("⚠️ Please enter a list of 2‑element tuples before processing.")
@@ -96,13 +74,9 @@ if st.button("Process Network"):
                 ax.set_axis_off()
 
                 # Centre the plot in the page
-                c1, c2, c3 = st.columns([1, 2, 1])
-                with c2:
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
                     st.pyplot(fig, use_container_width=True)
-
-                # ───── Additional inputs under the plot ─────
-                extra1 = st.text_input("Additional Input 1")
-                extra2 = st.text_input("Additional Input 2")
 
             else:
                 st.error("❌ Input must be a Python list of 2‑element tuples, e.g. [('A','B'),('B','C')].")
