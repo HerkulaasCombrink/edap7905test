@@ -23,11 +23,15 @@ Example:
 [('A', 'B'), ('B', 'C')]
 """)
 user_input = st.text_area("✍️ Type your edge list here:")
-if isinstance(parsed, list) and all(isinstance(e, tuple) and len(e) == 2 for e in parsed):
+if user_input: try: # Safely evaluate the input string parsed = ast.literal_eval(user_input)
+    # Validate and construct network
+    if isinstance(parsed, list) and all(isinstance(e, tuple) and len(e) == 2 for e in parsed):
         st.success("✅ Edges parsed successfully!")
 
+        # Create the Bayesian Network
         model = BayesianNetwork(parsed)
 
+        # Draw the network
         fig, ax = plt.subplots()
         nx.draw(
             model,
@@ -40,5 +44,8 @@ if isinstance(parsed, list) and all(isinstance(e, tuple) and len(e) == 2 for e i
             arrowsize=20
         )
         st.pyplot(fig)
-else:
+    else:
         st.warning("⚠️ Input must be a list of 2-element tuples like [('A', 'B')].")
+
+except Exception as e:
+    st.error(f"❌ Could not parse your input. Please check the format.\n\n**Error:** {e}")
