@@ -22,7 +22,7 @@ Example:
 ```python
 [('A', 'B'), ('B', 'C')]
 """)
-    if isinstance(parsed, list) and all(isinstance(e, tuple) and len(e) == 2 for e in parsed):
+if isinstance(parsed, list) and all(isinstance(e, tuple) and len(e) == 2 for e in parsed):
         st.success("✅ Edges parsed successfully!")
 
         model = BayesianNetwork(parsed)
