@@ -32,7 +32,7 @@ if user_input:
         if isinstance(parsed, list) and all(isinstance(e, tuple) and len(e) == 2 for e in parsed):
             st.success("✅ Edges parsed successfully!")
 
-            # (Optional) build the pgmpy model to check structure
+            # Build the pgmpy model to check structure
             model = DiscreteBayesianNetwork(parsed)
 
             # Build a NetworkX DiGraph for visualization
@@ -42,8 +42,8 @@ if user_input:
             # Compute layout
             pos = nx.spring_layout(G)
 
-            # Create Matplotlib figure
-            fig, ax = plt.subplots(figsize=(6, 6))
+            # Create Matplotlib figure with constrained layout on
+            fig, ax = plt.subplots(figsize=(6, 6), constrained_layout=True)
 
             # Draw nodes and labels
             nx.draw_networkx_nodes(G, pos, node_color="lightblue", node_size=2000, ax=ax)
@@ -63,6 +63,8 @@ if user_input:
                     )
                 )
 
+            # Add a margin so nothing is cut off
+            ax.margins(0.2)
             ax.set_axis_off()
 
             # Centre the plot in the page
