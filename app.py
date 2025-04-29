@@ -1,85 +1,85 @@
 import streamlit as st
-from pgmpy.models import DiscreteBayesianNetwork
 import networkx as nx
-import matplotlib.pyplot as plt
-import ast
+import numpy as np
+import pandas as pd
 
-# Configure Streamlit page
-st.set_page_config(page_title="Bayesian Network Builder", layout="centered")
+# Streamlit App: Lottery Predictor
+# --------------------------------
 
-# App title and instructions
-st.title("🧠 Bayesian Network Builder")
-st.markdown(
-    """
-Build and visualise your own Bayesian Network using `pgmpy`.
+# 1. Page configuration
+st.set_page_config(page_title="🎯 Lottery Predictor", layout="centered")
 
-### ✍️ Instructions:
-- Enter your edges below in Python list format.
-- Each tuple represents a directed edge from one node to another.
+st.title("🎯 Lottery Predictor")
 
-Example:
-```python
-[('A', 'B'), ('B', 'C')]
-```"""
+# 2. Sidebar configuration
+st.sidebar.header("Configuration")
+num_picks = st.sidebar.number_input(
+    "Numbers to pick", min_value=1, max_value=49, value=6, step=1
+)
+use_no_sequences = st.sidebar.checkbox(
+    "Exclude sequential adjacency", value=True
+)
+use_parity = st.sidebar.checkbox(
+    "Use parity grouping", value=True
+)
+use_decade = st.sidebar.checkbox(
+    "Use decade clustering", value=True
+)
+use_digit_sum = st.sidebar.checkbox(
+    "Use digital-sum similarity", value=False
 )
 
-# Text area for user input
-user_input = st.text_area("✍️ Type your edge list here:")
+# 3. Helper function for digital sum
 
-# The button that triggers network processing
-if st.button("Process Network"):
-    if not user_input:
-        st.warning("⚠️ Please enter a list of 2‑element tuples before processing.")
-    else:
-        try:
-            parsed = ast.literal_eval(user_input)
+def digital_sum(i: int) -> int:
+    """
+    Compute the sum of digits of i
+    """
+    return sum(int(c) for c in str(i))
 
-            # Validate format
-            if isinstance(parsed, list) and all(isinstance(e, tuple) and len(e) == 2 for e in parsed):
-                st.success("✅ Edges parsed successfully!")
+# 4. Predict button
+if st.sidebar.button("Predict"):
+    # a) Build graph with selected biases
+    G = nx.Graph()
+    G.add_nodes_from(range(1, 50))
+    for i in range(1, 50):
+        for j in range(i + 1, 50):
+            # Exclude sequential adjacency
+            if use_no_sequences and abs(i - j) == 1:
+                continue
+            # Decade clustering
+            if use_decade and (i - 1) // 10 == (j - 1) // 10:
+                G.add_edge(i, j)
+                continue
+            # Parity grouping
+            if use_parity and (i % 2) == (j % 2):
+                G.add_edge(i, j)
+                continue
+            # Digital-sum similarity
+            if use_digit_sum and digital_sum(i) == digital_sum(j):
+                G.add_edge(i, j)
 
-                # Optional: build the pgmpy model to check structure
-                model = DiscreteBayesianNetwork(parsed)
+    # b) Compute degree-based weights
+    degree_dict = dict(G.degree())
+    total_degree = sum(degree_dict.values())
+    weights = {node: count / total_degree for node, count in degree_dict.items()}
 
-                # Build a NetworkX DiGraph for visualization
-                G = nx.DiGraph()
-                G.add_edges_from(parsed)
+    # c) Perform the prediction
+    numbers = np.array(list(weights.keys()))
+    probs = np.array(list(weights.values()))
+    probs /= probs.sum()
+    # Draw without replacement
+    picks = np.random.choice(numbers, size=int(num_picks), replace=False, p=probs)
+    picks = sorted(picks)
 
-                # Compute layout
-                pos = nx.spring_layout(G)
+    # 5. Display results
+    st.subheader("Predicted Lottery Numbers")
+    st.write(picks)
 
-                # Create Matplotlib figure with automatic padding
-                fig, ax = plt.subplots(figsize=(6, 6), constrained_layout=True)
-
-                # Draw nodes and labels
-                nx.draw_networkx_nodes(G, pos, node_color="lightblue", node_size=2000, ax=ax)
-                nx.draw_networkx_labels(G, pos, font_size=14, font_weight="bold", ax=ax)
-
-                # Draw arrows manually
-                for src, dst in G.edges():
-                    ax.annotate(
-                        "",
-                        xy=pos[dst],
-                        xytext=pos[src],
-                        arrowprops=dict(
-                            arrowstyle="->",
-                            lw=2,
-                            shrinkA=15,
-                            shrinkB=15
-                        )
-                    )
-
-                # Add margin so nothing is cut off
-                ax.margins(0.2)
-                ax.set_axis_off()
-
-                # Centre the plot in the page
-                col1, col2, col3 = st.columns([1, 2, 1])
-                with col2:
-                    st.pyplot(fig, use_container_width=True)
-
-            else:
-                st.error("❌ Input must be a Python list of 2‑element tuples, e.g. [('A','B'),('B','C')].")
-
-        except Exception as e:
-            st.error(f"❌ Could not parse your input. Please check the format.\n\n**Error:** {e}")
+    # 6. Show weight distribution
+    weight_df = pd.DataFrame({
+        "Number": numbers,
+        "Weight": probs
+    }).sort_values("Weight", ascending=False)
+    st.subheader("Top 5 Numbers by Weight")
+    st.write(weight_df.head())
