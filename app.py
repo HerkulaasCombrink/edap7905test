@@ -4,11 +4,12 @@ import pandas as pd
 import altair as alt
 
 st.set_page_config(page_title="Lotto Number Predictor", layout="centered")
-st.title("🎲 Lotto Number Predictor with Range Bubble Visualization")
+st.title("🎲 Lotto Number Predictor with Custom Range Visualization")
 st.markdown("""
 Predict 5 numbers from 1–49 and a bonus number from 1–20.
 This strategy excludes obvious sequences (e.g., 1,2,3,4,5 or constant-step sequences like 3,6,9,12,15),
-and visualises each chosen number alongside its ±3 range on a continuum.
+and visualises each chosen number alongside its custom range on a continuum.
+Use the sliders to adjust how many numbers below and above each draw are included in the range.
 """ )
 
 # Utility to detect arithmetic sequences
@@ -23,23 +24,22 @@ def generate_lotto_numbers():
     available = list(range(1, 50))
     chosen = []
 
-    # Pick 5 main numbers
     for _ in range(5):
         num = random.choice(available)
         chosen.append(num)
         available.remove(num)
 
     chosen_sorted = sorted(chosen)
-    # Exclude trivial patterns
     if chosen_sorted == [1,2,3,4,5] or is_arithmetic_sequence(chosen_sorted):
         return generate_lotto_numbers()
 
-    # Pick bonus number
     bonus = random.choice(list(range(1, 21)))
     return chosen_sorted, bonus
 
 # Sidebar controls
-num_combos = st.sidebar.slider("Number of combinations to generate", min_value=1, max_value=10, value=1)
+num_combos = st.sidebar.slider("Number of combinations", min_value=1, max_value=10, value=1)
+lower_offset = st.sidebar.slider("Lower range offset", min_value=0, max_value=10, value=3)
+upper_offset = st.sidebar.slider("Upper range offset", min_value=0, max_value=10, value=3)
 
 if st.button("Generate Lotto Numbers"):
     for idx in range(num_combos):
@@ -47,30 +47,31 @@ if st.button("Generate Lotto Numbers"):
         exp = st.expander(f"Combination {idx+1}")
         with exp:
             st.subheader(f"Numbers: {combo}  •  Bonus: {bonus}")
+            st.write(f"Range offsets: {lower_offset} below, {upper_offset} above each number")
 
-            # Compute ranges for each main number
+            # Compute ranges using sliders
             ranges = []
             for n in combo:
-                start = max(1, n - 3)
-                end = min(49, n + 3)
-                ranges.append({"Number": n, "Range Start": start, "Range End": end})
+                start = max(1, n - lower_offset)
+                end = min(49, n + upper_offset)
+                ranges.append({"Number": n, "Start": start, "End": end})
 
             range_df = pd.DataFrame(ranges)
-            st.write("**Number Ranges (±3)**")
+            st.write("**Number Ranges**")
             st.table(range_df)
 
-            # Bubble + rule visualization over continuum
+            # Bubble + rule visualization
             rule = alt.Chart(range_df).mark_rule(color='gray', size=4).encode(
-                x='Range Start:Q',
-                x2='Range End:Q'
+                x='Start:Q',
+                x2='End:Q'
             )
             circles = alt.Chart(range_df).mark_circle(size=100).encode(
                 x='Number:Q',
-                tooltip=['Number', 'Range Start', 'Range End']
+                tooltip=['Number', 'Start', 'End']
             )
             chart = alt.layer(rule, circles).properties(
                 width=600,
                 height=100,
-                title='Main Number Ranges'
+                title='Number Ranges Continuum'
             )
             st.altair_chart(chart, use_container_width=True)
