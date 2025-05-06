@@ -1,13 +1,14 @@
 import streamlit as st
 import random
 import pandas as pd
+import altair as alt
 
 st.set_page_config(page_title="Lotto Number Predictor", layout="centered")
-st.title("🎲 Lotto Number Predictor with Range Output")
+st.title("🎲 Lotto Number Predictor with Range Bubble Visualization")
 st.markdown("""
 Predict 5 numbers from 1–49 and a bonus number from 1–20.
 This strategy excludes obvious sequences (e.g., 1,2,3,4,5 or constant-step sequences like 3,6,9,12,15),
-and displays each chosen number with its ±3 range.
+and visualises each chosen number alongside its ±3 range on a continuum.
 """ )
 
 # Utility to detect arithmetic sequences
@@ -47,13 +48,29 @@ if st.button("Generate Lotto Numbers"):
         with exp:
             st.subheader(f"Numbers: {combo}  •  Bonus: {bonus}")
 
-            # Compute and display ranges for each main number
+            # Compute ranges for each main number
             ranges = []
             for n in combo:
                 start = max(1, n - 3)
                 end = min(49, n + 3)
                 ranges.append({"Number": n, "Range Start": start, "Range End": end})
-            range_df = pd.DataFrame(ranges)
 
+            range_df = pd.DataFrame(ranges)
             st.write("**Number Ranges (±3)**")
             st.table(range_df)
+
+            # Bubble + rule visualization over continuum
+            rule = alt.Chart(range_df).mark_rule(color='gray', size=4).encode(
+                x='Range Start:Q',
+                x2='Range End:Q'
+            )
+            circles = alt.Chart(range_df).mark_circle(size=100).encode(
+                x='Number:Q',
+                tooltip=['Number', 'Range Start', 'Range End']
+            )
+            chart = alt.layer(rule, circles).properties(
+                width=600,
+                height=100,
+                title='Main Number Ranges'
+            )
+            st.altair_chart(chart, use_container_width=True)
