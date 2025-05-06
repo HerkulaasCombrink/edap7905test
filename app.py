@@ -6,7 +6,7 @@ import altair as alt
 st.set_page_config(page_title="Lotto Number Predictor", layout="centered")
 st.title("🎲 Lotto Number Predictor with Exportable Ranges")
 st.markdown("""
-Predict 5 numbers from 1–49 and a bonus number from 1–20.
+Predict 5 numbers from 1–50 and a bonus number from 1–20.
 This strategy excludes obvious sequences (e.g., 1,2,3,4,5 or constant-step sequences like 3,6,9,12,15),
 and visualises each chosen number alongside its custom range on a continuum.
 Use the sliders to adjust how many numbers below and above each draw are included in the range, then export all results as CSV.
