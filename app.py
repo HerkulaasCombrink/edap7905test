@@ -4,7 +4,7 @@ import pandas as pd
 import altair as alt
 
 st.set_page_config(page_title="Lotto Number Predictor", layout="centered")
-st.title("🎲 Lotto Number Predictor with Exportable Ranges")
+st.title("Lotto Number Predictor with Exportable Ranges")
 st.markdown("""
 Predict 5 numbers from 1–50 and a bonus number from 1–20.
 This strategy excludes obvious sequences (e.g., 1,2,3,4,5 or constant-step sequences like 3,6,9,12,15),
@@ -21,7 +21,7 @@ def is_arithmetic_sequence(nums):
 
 # Generate one lotto combination
 def generate_lotto_numbers():
-    available = list(range(1, 50))
+    available = list(range(1, 51))
     chosen = []
     for _ in range(5):
         num = random.choice(available)
