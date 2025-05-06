@@ -2,3 +2,4 @@ streamlit
 pgmpy
 matplotlib
 networkx
+altair
