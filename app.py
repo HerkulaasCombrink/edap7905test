@@ -1,85 +1,69 @@
 import streamlit as st
-import networkx as nx
-import numpy as np
+import random
 import pandas as pd
 
-# Streamlit App: Lottery Predictor
-# --------------------------------
+st.set_page_config(page_title="Lotto Number Predictor", layout="centered")
+st.title("🎲 Lotto Number Predictor")
+st.markdown("""
+Predict 5 numbers from 1–49 and a bonus number from 1–20.
+This strategy excludes obvious sequences (e.g., 1,2,3,4,5 or constant-step sequences like 3,6,9,12,15)
+and visualises the probability distribution updating after each pick.
+""")
 
-# 1. Page configuration
-st.set_page_config(page_title="🎯 Lottery Predictor", layout="centered")
+# Utility to detect arithmetic sequences
 
-st.title("🎯 Lottery Predictor")
+def is_arithmetic_sequence(nums):
+    if len(nums) < 2:
+        return False
+    diffs = [nums[i+1] - nums[i] for i in range(len(nums)-1)]
+    return all(d == diffs[0] for d in diffs)
 
-# 2. Sidebar configuration
-st.sidebar.header("Configuration")
-num_picks = st.sidebar.number_input(
-    "Numbers to pick", min_value=1, max_value=49, value=6, step=1
-)
-use_no_sequences = st.sidebar.checkbox(
-    "Exclude sequential adjacency", value=True
-)
-use_parity = st.sidebar.checkbox(
-    "Use parity grouping", value=True
-)
-use_decade = st.sidebar.checkbox(
-    "Use decade clustering", value=True
-)
-use_digit_sum = st.sidebar.checkbox(
-    "Use digital-sum similarity", value=False
-)
+# Generate one lotto combination and capture probability frames
 
-# 3. Helper function for digital sum
+def generate_lotto_numbers():
+    available = list(range(1, 50))
+    chosen = []
+    frames = []
 
-def digital_sum(i: int) -> int:
-    """
-    Compute the sum of digits of i
-    """
-    return sum(int(c) for c in str(i))
+    # Choose 5 main numbers
+    for pick_idx in range(1, 6):
+        # uniform probabilities over remaining numbers
+        prob = 1 / len(available)
+        df = pd.DataFrame({
+            "Number": available,
+            "Probability": [prob] * len(available)
+        })
+        frames.append((f"Pick {pick_idx}", df))
 
-# 4. Predict button
-if st.sidebar.button("Predict"):
-    # a) Build graph with selected biases
-    G = nx.Graph()
-    G.add_nodes_from(range(1, 50))
-    for i in range(1, 50):
-        for j in range(i + 1, 50):
-            # Exclude sequential adjacency
-            if use_no_sequences and abs(i - j) == 1:
-                continue
-            # Decade clustering
-            if use_decade and (i - 1) // 10 == (j - 1) // 10:
-                G.add_edge(i, j)
-                continue
-            # Parity grouping
-            if use_parity and (i % 2) == (j % 2):
-                G.add_edge(i, j)
-                continue
-            # Digital-sum similarity
-            if use_digit_sum and digital_sum(i) == digital_sum(j):
-                G.add_edge(i, j)
+        # random choice weighted by updated probabilities
+        chosen_num = random.choices(available, weights=[prob]*len(available), k=1)[0]
+        chosen.append(chosen_num)
+        available.remove(chosen_num)
 
-    # b) Compute degree-based weights
-    degree_dict = dict(G.degree())
-    total_degree = sum(degree_dict.values())
-    weights = {node: count / total_degree for node, count in degree_dict.items()}
+    chosen_sorted = sorted(chosen)
+    # Exclude trivial patterns
+    if chosen_sorted == [1,2,3,4,5] or is_arithmetic_sequence(chosen_sorted):
+        return generate_lotto_numbers()
 
-    # c) Perform the prediction
-    numbers = np.array(list(weights.keys()))
-    probs = np.array(list(weights.values()))
-    probs /= probs.sum()
-    # Draw without replacement
-    picks = np.random.choice(numbers, size=int(num_picks), replace=False, p=probs)
-    picks = sorted(picks)
+    # Bonus number
+    bonus_avail = list(range(1, 21))
+    bonus_prob = 1 / len(bonus_avail)
+    bonus_df = pd.DataFrame({
+        "Bonus Number": bonus_avail,
+        "Probability": [bonus_prob] * len(bonus_avail)
+    })
+    bonus_num = random.choice(bonus_avail)
+    frames.append(("Bonus", bonus_df))
 
-    # 5. Display results
-    st.subheader("Predicted Lottery Numbers")
-    st.write(picks)
+    return chosen_sorted, bonus_num, frames
 
-    # 6. Show weight distribution
-    weight_df = pd.DataFrame({
-        "Number": numbers,
-        "Weight": probs
-    }).sort_values("Weight", ascending=False)
-    st.subheader("Top 5 Numbers by Weight")
-    st.write(weight_df.head())
+# User controls
+num_combos = st.sidebar.slider("Number of combinations to generate", min_value=1, max_value=10, value=1)
+if st.button("Generate Lotto Numbers"):
+    for idx in range(num_combos):
+        combo, bonus, prob_frames = generate_lotto_numbers()
+        exp = st.expander(f"Combination {idx+1}: {combo}  •  Bonus: {bonus}")
+        with exp:
+            for title, df in prob_frames:
+                st.subheader(title)
+                st.bar_chart(df.set_index(df.columns[0]))
