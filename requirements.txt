@@ -1,8 +1,3 @@
 streamlit
-pgmpy
-matplotlib
-networkx
-altair
-base64
-requests
 pandas
+requests
