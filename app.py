@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 
-st.title("🐶 Random Dog Image Viewer")
+st.title("Random Dog Image Viewer")
 
 if st.button("Get a Dog"):
     response = requests.get("https://dog.ceo/api/breeds/image/random")
