@@ -5,3 +5,4 @@ networkx
 altair
 base64
 requests
+pandas
