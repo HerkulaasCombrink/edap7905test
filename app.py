@@ -4,7 +4,7 @@ import base64
 import os
 
 GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]  # Store safely
-REPO_NAME = "your-username/your-repo"
+REPO_NAME = "HerkulaasCombrink/edap7905test"
 FILE_PATH = "data/new_file.txt"
 COMMIT_MESSAGE = "Add new_file.txt"
 BRANCH = "main"
