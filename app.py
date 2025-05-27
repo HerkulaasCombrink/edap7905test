@@ -63,8 +63,9 @@ if st.session_state.sim_state["running"]:
         base_fatigue_rate = 0.02
         fatigue_decay = base_fatigue_rate + (0.01 * sim["hit_count"])
 
-        # Cognition decline is volatile — MORE EXTREME now
-        noise = random.uniform(-1.5, 1.5)
+        # Cognition volatility increases with hit count (random up/down)
+        volatility = 0.2 + (0.1 * sim["hit_count"])
+        noise = random.uniform(-volatility, volatility)
         cognition_decay = 0.015 + (0.003 * sim["hit_count"]) + noise
 
         sim["fatigue"] += fatigue_decay
@@ -86,7 +87,7 @@ if st.session_state.sim_state["running"]:
             }
             sim["damage_log"] = pd.concat([sim["damage_log"], pd.DataFrame([new_entry])], ignore_index=True)
 
-        # Logs
+        # Log metrics
         sim["fatigue_log"].append(sim["fatigue"])
         sim["cognition_log"].append(sim["cognition"])
         sim["time_log"].append(sim["current_time"])
@@ -110,7 +111,7 @@ with col1:
     if not df.empty:
         line_chart = alt.Chart(df).transform_fold(
             ["Fatigue", "Cognition"], as_=["Metric", "Value"]
-        ).mark_line().encode(
+        ).mark_line(strokeWidth=1.5).encode(
             x="Time:Q",
             y="Value:Q",
             color="Metric:N"
