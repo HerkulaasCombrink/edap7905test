@@ -1,10 +1,9 @@
 import streamlit as st
-import time
 import random
 import pandas as pd
 import altair as alt
 from streamlit_autorefresh import st_autorefresh
-st_autorefresh(interval=1000, limit=1000, key="auto-refresh")
+
 # --- Config ---
 st.set_page_config(page_title="Athlete Simulation Dashboard", layout="wide")
 st.title("🏃 Athlete Damage & Fatigue Dashboard (Synthetic Only)")
@@ -74,7 +73,6 @@ if st.session_state.sim_state["running"]:
             }
             sim["damage_log"] = pd.concat([sim["damage_log"], pd.DataFrame([new_entry])], ignore_index=True)
 
-        # Log values
         sim["fatigue_log"].append(sim["fatigue"])
         sim["cognition_log"].append(sim["cognition"])
         sim["time_log"].append(sim["current_time"])
@@ -85,8 +83,8 @@ if st.session_state.sim_state["running"]:
             sim["cognition_log"] = sim["cognition_log"][-1000:]
             sim["time_log"] = sim["time_log"][-1000:]
 
-        time.sleep(1)
-        st.experimental_rerun()
+        # SAFE AUTO-REFRESH every 1s
+        st_autorefresh(interval=1000, limit=1000, key="auto-refresh")
     else:
         st.warning("🏁 Simulation completed.")
         st.session_state.sim_state["running"] = False
@@ -99,37 +97,4 @@ with col1:
     st.subheader("📈 Fatigue & Cognition Over Time")
     df = pd.DataFrame({
         "Time": st.session_state.sim_state["time_log"],
-        "Fatigue": st.session_state.sim_state["fatigue_log"],
-        "Cognition": st.session_state.sim_state["cognition_log"],
-    })
-    if not df.empty:
-        line_chart = alt.Chart(df).transform_fold(
-            ["Fatigue", "Cognition"], as_=["Metric", "Value"]
-        ).mark_line().encode(
-            x="Time:Q",
-            y="Value:Q",
-            color="Metric:N"
-        ).properties(height=300)
-        st.altair_chart(line_chart, use_container_width=True)
-    else:
-        st.info("Simulation not started yet.")
-
-# --- Status Metrics ---
-with col2:
-    st.subheader("📊 Status")
-    fatigue = st.session_state.sim_state["fatigue"]
-    cognition = st.session_state.sim_state["cognition"]
-    performance = round(100 - ((fatigue + (100 - cognition)) / 2), 2)
-
-    st.metric("Fatigue", f"{fatigue:.2f}")
-    st.metric("Cognition", f"{cognition:.2f}")
-    st.metric("Performance", f"{performance:.2f}")
-
-    if fatigue >= 90 or cognition <= 40:
-        st.error("🔴 Replace Athlete! Threshold passed.")
-    elif fatigue >= 70 or cognition <= 60:
-        st.warning("🟠 Break Required!")
-
-# --- Damage Log Table ---
-st.subheader("📄 Synthetic Damage Log")
-st.dataframe(st.session_state.sim_state["damage_log"], use_container_width=True)
+        "Fatigue": st.session_sta_
