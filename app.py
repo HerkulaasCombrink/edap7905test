@@ -49,7 +49,7 @@ with st.sidebar:
             "damage_log": pd.DataFrame(columns=["Time", "Body Part", "Fatigue Δ", "Cognition Δ"]),
         }
 
-    st.write("Time:", st.session_state.sim_state["current_time"], "s")
+    st.write("⏱️ Time:", st.session_state.sim_state["current_time"], "s")
 
 # --- Simulation Update ---
 if st.session_state.sim_state["running"]:
@@ -73,11 +73,19 @@ if st.session_state.sim_state["running"]:
             }
             sim["damage_log"] = pd.concat([sim["damage_log"], pd.DataFrame([new_entry])], ignore_index=True)
 
+        # Log values
         sim["fatigue_log"].append(sim["fatigue"])
         sim["cognition_log"].append(sim["cognition"])
         sim["time_log"].append(sim["current_time"])
 
+        # Optional: prevent memory overflow
+        if len(sim["time_log"]) > 1000:
+            sim["fatigue_log"] = sim["fatigue_log"][-1000:]
+            sim["cognition_log"] = sim["cognition_log"][-1000:]
+            sim["time_log"] = sim["time_log"][-1000:]
+
         time.sleep(1)
+        st.experimental_rerun()
     else:
         st.warning("🏁 Simulation completed.")
         st.session_state.sim_state["running"] = False
@@ -85,6 +93,7 @@ if st.session_state.sim_state["running"]:
 # --- Dashboard Layout ---
 col1, col2 = st.columns([1.5, 1])
 
+# --- Time-series Chart ---
 with col1:
     st.subheader("📈 Fatigue & Cognition Over Time")
     df = pd.DataFrame({
@@ -92,15 +101,19 @@ with col1:
         "Fatigue": st.session_state.sim_state["fatigue_log"],
         "Cognition": st.session_state.sim_state["cognition_log"],
     })
-    line_chart = alt.Chart(df).transform_fold(
-        ["Fatigue", "Cognition"], as_=["Metric", "Value"]
-    ).mark_line().encode(
-        x="Time:Q",
-        y="Value:Q",
-        color="Metric:N"
-    ).properties(height=300)
-    st.altair_chart(line_chart, use_container_width=True)
+    if not df.empty:
+        line_chart = alt.Chart(df).transform_fold(
+            ["Fatigue", "Cognition"], as_=["Metric", "Value"]
+        ).mark_line().encode(
+            x="Time:Q",
+            y="Value:Q",
+            color="Metric:N"
+        ).properties(height=300)
+        st.altair_chart(line_chart, use_container_width=True)
+    else:
+        st.info("Simulation not started yet.")
 
+# --- Status Metrics ---
 with col2:
     st.subheader("📊 Status")
     fatigue = st.session_state.sim_state["fatigue"]
@@ -116,6 +129,6 @@ with col2:
     elif fatigue >= 70 or cognition <= 60:
         st.warning("🟠 Break Required!")
 
-# --- Log Table ---
+# --- Damage Log Table ---
 st.subheader("📄 Synthetic Damage Log")
 st.dataframe(st.session_state.sim_state["damage_log"], use_container_width=True)
