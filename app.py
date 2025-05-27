@@ -61,12 +61,12 @@ if st.session_state.sim_state["running"]:
 
         # Fatigue increases with compounding effect
         base_fatigue_rate = 0.02
-        fatigue_decay = base_fatigue_rate + (0.01 * sim["hit_count"])
+        fatigue_decay = base_fatigue_rate + (0.04 * sim["hit_count"])
 
         # Cognition volatility increases with hit count (random up/down)
         volatility = 0.2 + (0.1 * sim["hit_count"])
         noise = random.uniform(-volatility, volatility)
-        cognition_decay = 0.015 + (0.003 * sim["hit_count"]) + noise
+        cognition_decay = 0.015 + (0.005 * sim["hit_count"]) + noise
 
         sim["fatigue"] += fatigue_decay
         sim["cognition"] -= cognition_decay
