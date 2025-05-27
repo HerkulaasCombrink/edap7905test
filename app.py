@@ -3,7 +3,8 @@ import time
 import random
 import pandas as pd
 import altair as alt
-
+from streamlit_autorefresh import st_autorefresh
+st_autorefresh(interval=1000, limit=1000, key="auto-refresh")
 # --- Config ---
 st.set_page_config(page_title="Athlete Simulation Dashboard", layout="wide")
 st.title("🏃 Athlete Damage & Fatigue Dashboard (Synthetic Only)")
