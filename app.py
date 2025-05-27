@@ -6,7 +6,7 @@ import time
 
 # --- Config ---
 st.set_page_config(page_title="Athlete Simulation Dashboard", layout="wide")
-st.title("🏃 Athlete Damage & Fatigue Dashboard (Synthetic Only)")
+st.title("🏃 Athlete Damage & Fatigue Dashboard (Volatile + Synthetic)")
 
 # --- Session State Init ---
 if "sim_state" not in st.session_state:
@@ -15,6 +15,7 @@ if "sim_state" not in st.session_state:
         "current_time": 0,
         "fatigue": 0.0,
         "cognition": 100.0,
+        "hit_count": 0,
         "fatigue_log": [],
         "cognition_log": [],
         "time_log": [],
@@ -43,6 +44,7 @@ with st.sidebar:
             "current_time": 0,
             "fatigue": 0.0,
             "cognition": 100.0,
+            "hit_count": 0,
             "fatigue_log": [],
             "cognition_log": [],
             "time_log": [],
@@ -56,8 +58,17 @@ if st.session_state.sim_state["running"]:
     if st.session_state.sim_state["current_time"] < 1000:
         sim = st.session_state.sim_state
         sim["current_time"] += 1
-        sim["fatigue"] += 0.02
-        sim["cognition"] -= 0.015
+
+        # Fatigue increases with compounding effect
+        base_fatigue_rate = 0.02
+        fatigue_decay = base_fatigue_rate + (0.01 * sim["hit_count"])
+
+        # Cognition decline is volatile
+        noise = random.uniform(-0.5, 0.5)
+        cognition_decay = 0.015 + (0.003 * sim["hit_count"]) + noise
+
+        sim["fatigue"] += fatigue_decay
+        sim["cognition"] -= cognition_decay
 
         # Random damage event
         if random.random() < 0.1:
@@ -65,6 +76,8 @@ if st.session_state.sim_state["running"]:
             dmg = BODY_PART_IMPACTS[part]
             sim["fatigue"] += dmg["fatigue"]
             sim["cognition"] -= dmg["cognition"]
+            sim["hit_count"] += 1
+
             new_entry = {
                 "Time": sim["current_time"],
                 "Body Part": part,
@@ -73,9 +86,16 @@ if st.session_state.sim_state["running"]:
             }
             sim["damage_log"] = pd.concat([sim["damage_log"], pd.DataFrame([new_entry])], ignore_index=True)
 
+        # Logs
         sim["fatigue_log"].append(sim["fatigue"])
         sim["cognition_log"].append(sim["cognition"])
         sim["time_log"].append(sim["current_time"])
+
+        # Optional cleanup
+        if len(sim["time_log"]) > 1000:
+            sim["fatigue_log"] = sim["fatigue_log"][-1000:]
+            sim["cognition_log"] = sim["cognition_log"][-1000:]
+            sim["time_log"] = sim["time_log"][-1000:]
 
 # --- Dashboard Layout ---
 col1, col2 = st.columns([1.5, 1])
@@ -117,7 +137,7 @@ with col2:
 st.subheader("📄 Synthetic Damage Log")
 st.dataframe(st.session_state.sim_state["damage_log"], use_container_width=True)
 
-# --- Safe rerun at end ---
+# --- Safe Auto-Rerun ---
 if st.session_state.sim_state["running"]:
     time.sleep(1)
     st.experimental_rerun()
