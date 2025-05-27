@@ -1,4 +1,4 @@
 streamlit
 pandas
 requests
-autorefresh
+streamlit-autorefresh==0.0.3
