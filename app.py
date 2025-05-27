@@ -13,8 +13,8 @@ if "sim_state" not in st.session_state:
     st.session_state.sim_state = {
         "running": False,
         "current_time": 0,
-        "fatigue": 0.0,
-        "cognition": 100.0,
+        "fatigue": 10.0,         # Starts at 10
+        "cognition": 90.0,       # Starts at 90
         "hit_count": 0,
         "fatigue_log": [],
         "cognition_log": [],
@@ -42,8 +42,8 @@ with st.sidebar:
         st.session_state.sim_state = {
             "running": False,
             "current_time": 0,
-            "fatigue": 0.0,
-            "cognition": 100.0,
+            "fatigue": 10.0,
+            "cognition": 90.0,
             "hit_count": 0,
             "fatigue_log": [],
             "cognition_log": [],
@@ -63,8 +63,8 @@ if st.session_state.sim_state["running"]:
         base_fatigue_rate = 0.02
         fatigue_decay = base_fatigue_rate + (0.01 * sim["hit_count"])
 
-        # Cognition decline is volatile
-        noise = random.uniform(-0.5, 0.5)
+        # Cognition decline is volatile — MORE EXTREME now
+        noise = random.uniform(-1.5, 1.5)
         cognition_decay = 0.015 + (0.003 * sim["hit_count"]) + noise
 
         sim["fatigue"] += fatigue_decay
