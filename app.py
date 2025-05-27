@@ -97,4 +97,37 @@ with col1:
     st.subheader("📈 Fatigue & Cognition Over Time")
     df = pd.DataFrame({
         "Time": st.session_state.sim_state["time_log"],
-        "Fatigue": st.session_sta_
+        "Fatigue": st.session_state.sim_state["fatigue_log"],
+        "Cognition": st.session_state.sim_state["cognition_log"],
+    })
+    if not df.empty:
+        line_chart = alt.Chart(df).transform_fold(
+            ["Fatigue", "Cognition"], as_=["Metric", "Value"]
+        ).mark_line().encode(
+            x="Time:Q",
+            y="Value:Q",
+            color="Metric:N"
+        ).properties(height=300)
+        st.altair_chart(line_chart, use_container_width=True)
+    else:
+        st.info("Simulation not started yet.")
+
+# --- Status Metrics ---
+with col2:
+    st.subheader("📊 Status")
+    fatigue = st.session_state.sim_state["fatigue"]
+    cognition = st.session_state.sim_state["cognition"]
+    performance = round(100 - ((fatigue + (100 - cognition)) / 2), 2)
+
+    st.metric("Fatigue", f"{fatigue:.2f}")
+    st.metric("Cognition", f"{cognition:.2f}")
+    st.metric("Performance", f"{performance:.2f}")
+
+    if fatigue >= 90 or cognition <= 40:
+        st.error("🔴 Replace Athlete! Threshold passed.")
+    elif fatigue >= 70 or cognition <= 60:
+        st.warning("🟠 Break Required!")
+
+# --- Damage Log Table ---
+st.subheader("📄 Synthetic Damage Log")
+st.dataframe(st.session_state.sim_state["damage_log"], use_container_width=True)
