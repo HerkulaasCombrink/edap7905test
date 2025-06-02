@@ -1,144 +1,65 @@
 import streamlit as st
-import random
 import pandas as pd
-import altair as alt
-import time
 
-# --- Config ---
-st.set_page_config(page_title="Athlete Simulation Dashboard", layout="wide")
-st.title("🏃 Athlete Damage & Fatigue Dashboard (Volatile + Synthetic)")
+def generate_annotation(h, c, n, d1, l1, s1, p1, m1, r1, d2, l2, s2, p2, m2, r2):
+    math_annotation = (
+        f"({h},{c},{n}) \\times \\left[ "
+        f"\\frac{{{d2}}}{{{d1}}} \\Bigg| "
+        f"\\frac{{{l2}}}{{{l1}}} \\Bigg| "
+        f"\\frac{{{s2}}}{{{s1}}} \\Bigg| "
+        f"\\frac{{{p2}}}{{{p1}}} \\Bigg| "
+        f"\\frac{{{m2}}}{{{m1}}} \\Bigg| "
+        f"\\frac{{{r2}}}{{{r1}}} "
+        f"\\right]"
+    )
 
-# --- Session State Init ---
-if "sim_state" not in st.session_state:
-    st.session_state.sim_state = {
-        "running": False,
-        "current_time": 0,
-        "fatigue": 10.0,         # Starts at 10
-        "cognition": 90.0,       # Starts at 90
-        "hit_count": 0,
-        "fatigue_log": [],
-        "cognition_log": [],
-        "time_log": [],
-        "damage_log": pd.DataFrame(columns=["Time", "Body Part", "Fatigue Δ", "Cognition Δ"]),
-    }
+    csv_row = [h, c, n, d1, l1, s1, p1, m1, r1, d2, l2, s2, p2, m2, r2]
+    return math_annotation, csv_row
 
-# --- Damage Profiles ---
-BODY_PART_IMPACTS = {
-    "head": {"fatigue": 10, "cognition": 20},
-    "chest": {"fatigue": 8, "cognition": 10},
-    "arm": {"fatigue": 5, "cognition": 3},
-    "leg": {"fatigue": 5, "cognition": 3},
-    "abdomen": {"fatigue": 3, "cognition": 1},
-}
+st.title("SASL Annotation Generator")
 
-# --- Controls ---
-with st.sidebar:
-    st.header("Simulation Controls")
-    if st.button("▶ Start / Resume"):
-        st.session_state.sim_state["running"] = True
-    if st.button("⏸ Pause"):
-        st.session_state.sim_state["running"] = False
-    if st.button("🔁 Reset"):
-        st.session_state.sim_state = {
-            "running": False,
-            "current_time": 0,
-            "fatigue": 10.0,
-            "cognition": 90.0,
-            "hit_count": 0,
-            "fatigue_log": [],
-            "cognition_log": [],
-            "time_log": [],
-            "damage_log": pd.DataFrame(columns=["Time", "Body Part", "Fatigue Δ", "Cognition Δ"]),
-        }
+# Layout for global parameters
+st.subheader("Global Parameters")
+col_global1, col_global2, col_global3 = st.columns(3)
+with col_global1:
+    h = st.selectbox("Handedness (H)", [1, 2], index=0)
+with col_global2:
+    c = st.selectbox("Contact (C)", [0, 1], index=0)
+with col_global3:
+    n = st.selectbox("Mouthing (N)", [1, 2], index=0)
 
-    st.write("⏱️ Time:", st.session_state.sim_state["current_time"], "s")
-
-# --- Simulation Update ---
-if st.session_state.sim_state["running"]:
-    if st.session_state.sim_state["current_time"] < 1000:
-        sim = st.session_state.sim_state
-        sim["current_time"] += 1
-
-        # Fatigue increases with compounding effect
-        base_fatigue_rate = 0.02
-        fatigue_decay = base_fatigue_rate + (0.04 * sim["hit_count"])
-
-        # Cognition volatility increases with hit count (random up/down)
-        volatility = 0.2 + (0.8 * sim["hit_count"])
-        noise = random.uniform(-volatility, volatility)
-        cognition_decay = 0.015 + (0.005 * sim["hit_count"]) + noise
-
-        sim["fatigue"] += fatigue_decay
-        sim["cognition"] -= cognition_decay
-
-        # Random damage event
-        if random.random() < 0.1:
-            part = random.choice(list(BODY_PART_IMPACTS.keys()))
-            dmg = BODY_PART_IMPACTS[part]
-            sim["fatigue"] += dmg["fatigue"]
-            sim["cognition"] -= dmg["cognition"]
-            sim["hit_count"] += 1
-
-            new_entry = {
-                "Time": sim["current_time"],
-                "Body Part": part,
-                "Fatigue Δ": dmg["fatigue"],
-                "Cognition Δ": -dmg["cognition"]
-            }
-            sim["damage_log"] = pd.concat([sim["damage_log"], pd.DataFrame([new_entry])], ignore_index=True)
-
-        # Log metrics
-        sim["fatigue_log"].append(sim["fatigue"])
-        sim["cognition_log"].append(sim["cognition"])
-        sim["time_log"].append(sim["current_time"])
-
-        # Optional cleanup
-        if len(sim["time_log"]) > 1000:
-            sim["fatigue_log"] = sim["fatigue_log"][-1000:]
-            sim["cognition_log"] = sim["cognition_log"][-1000:]
-            sim["time_log"] = sim["time_log"][-1000:]
-
-# --- Dashboard Layout ---
-col1, col2 = st.columns([1.5, 1])
-
+# Layout for dominant and non-dominant hand
+st.subheader("Dominant and Non-Dominant Hand Parameters")
+col1, col2 = st.columns(2)
 with col1:
-    st.subheader("📈 Fatigue & Cognition Over Time")
-    df = pd.DataFrame({
-        "Time": st.session_state.sim_state["time_log"],
-        "Fatigue": st.session_state.sim_state["fatigue_log"],
-        "Cognition": st.session_state.sim_state["cognition_log"],
-    })
-    if not df.empty:
-        line_chart = alt.Chart(df).transform_fold(
-            ["Fatigue", "Cognition"], as_=["Metric", "Value"]
-        ).mark_line(strokeWidth=1.5).encode(
-            x="Time:Q",
-            y="Value:Q",
-            color="Metric:N"
-        ).properties(height=300)
-        st.altair_chart(line_chart, use_container_width=True)
-    else:
-        st.info("Simulation not started yet.")
+    st.text("Dominant Hand")
+    d1 = 1  # Always dominant hand
+    l1 = st.slider("Location (L1)", 0, 10, 1)
+    s1 = st.text_input("Handshape (S1)", "B")
+    p1 = st.slider("Palm Orientation (P1)", 1, 5, 1)
+    m1 = st.slider("Movement (M1)", 0, 23, 4)
+    r1 = st.slider("Repetition (R1)", 0, 1, 1)
 
 with col2:
-    st.subheader("📊 Status")
-    fatigue = st.session_state.sim_state["fatigue"]
-    cognition = st.session_state.sim_state["cognition"]
-    performance = round(100 - ((fatigue + (100 - cognition)) / 2), 2)
+    st.text("Non-Dominant Hand")
+    d2 = st.selectbox("Non-Dominant Hand (D2)", [0, 2], index=0)
+    l2 = st.slider("Location (L2)", 0, 10, 0)
+    s2 = st.text_input("Handshape (S2)", "0")
+    p2 = st.slider("Palm Orientation (P2)", 0, 5, 0)
+    m2 = st.slider("Movement (M2)", 0, 23, 0)
+    r2 = st.slider("Repetition (R2)", 0, 1, 0)
 
-    st.metric("Fatigue", f"{fatigue:.2f}")
-    st.metric("Cognition", f"{cognition:.2f}")
-    st.metric("Performance", f"{performance:.2f}")
+# Calculate button
+if st.button("Calculate Annotation"):
+    math_annotation, csv_row = generate_annotation(h, c, n, d1, l1, s1, p1, m1, r1, d2, l2, s2, p2, m2, r2)
 
-    if fatigue >= 90 or cognition <= 40:
-        st.error("🔴 Replace Athlete! Threshold passed.")
-    elif fatigue >= 70 or cognition <= 60:
-        st.warning("🟠 Break Required!")
+    # Display results
+    st.subheader("Mathematical Notation")
+    st.latex(math_annotation)
 
-st.subheader("📄 Synthetic Damage Log")
-st.dataframe(st.session_state.sim_state["damage_log"], use_container_width=True)
+    st.subheader("CSV Output")
+    st.write(",".join(map(str, csv_row)))
 
-# --- Safe Auto-Rerun ---
-if st.session_state.sim_state["running"]:
-    time.sleep(1)
-    st.experimental_rerun()
+    # Allow CSV Download
+    df = pd.DataFrame([csv_row], columns=["H", "C", "N", "D1", "L1", "S1", "P1", "M1", "R1", "D2", "L2", "S2", "P2", "M2", "R2"])
+    st.download_button("Download CSV", df.to_csv(index=False), "annotation.csv", "text/csv")
