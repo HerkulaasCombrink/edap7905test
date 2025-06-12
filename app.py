@@ -6,7 +6,7 @@ import plotly.graph_objs as go
 from pytrends.request import TrendReq
 
 # --- Page Configuration ---
-st.set_page_config(page_title="Real-Time Trading Dashboard", layout="wide")
+st.set_page_config(page_title="Trading Dashboard", layout="wide")
 
 # --- Sidebar Controls ---
 st.sidebar.title("Stock Selection")
@@ -22,8 +22,8 @@ st.sidebar.subheader("Google Trends")
 google_keyword = st.sidebar.text_input("Enter keyword for Google Trends", ticker_symbol)
 
 # --- Load Stock Data ---
-st.title("Real-Time Trading Dashboard")
-st.write(f"Showing data for **{ticker_symbol}** with period `{period}` and interval `{interval}`")
+st.markdown("### Trading Dashboard - Compact View")
+st.caption(f"Showing data for **{ticker_symbol}** with period `{period}` and interval `{interval}`")
 
 @st.cache_data(ttl=3600)
 def load_stock_data(ticker):
@@ -52,8 +52,7 @@ def compute_rsi(series, period=14):
 data = add_indicators(data)
 
 # --- Layout for Compact View ---
-st.subheader("Real-Time Trading Overview")
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns([1, 1, 1])
 
 # --- Candlestick Chart ---
 candlestick = go.Figure()
@@ -64,17 +63,16 @@ candlestick.add_trace(go.Candlestick(x=data.index,
                                      close=data["Close"], name="Candlestick"))
 candlestick.add_trace(go.Scatter(x=data.index, y=data["SMA20"], line=dict(color='blue', width=1), name="SMA20"))
 candlestick.add_trace(go.Scatter(x=data.index, y=data["SMA50"], line=dict(color='orange', width=1), name="SMA50"))
-candlestick.update_layout(xaxis_rangeslider_visible=False, height=400, margin=dict(l=10, r=10, t=30, b=10))
+candlestick.update_layout(xaxis_rangeslider_visible=False, height=280, margin=dict(l=5, r=5, t=20, b=5))
 col1.plotly_chart(candlestick, use_container_width=True)
 
 # --- RSI Indicator ---
 rsi_fig = go.Figure()
 rsi_fig.add_trace(go.Scatter(x=data.index, y=data["RSI"], line=dict(color='purple', width=1), name="RSI"))
-rsi_fig.update_layout(height=400, yaxis_title="RSI", margin=dict(l=10, r=10, t=30, b=10))
+rsi_fig.update_layout(height=280, yaxis_title="RSI", margin=dict(l=5, r=5, t=20, b=5))
 col2.plotly_chart(rsi_fig, use_container_width=True)
 
 # --- Google Trends ---
-st.subheader(f"Google Trends for '{google_keyword}'")
 @st.cache_data(ttl=3600)
 def load_google_trends(keyword):
     pytrends = TrendReq()
@@ -84,9 +82,9 @@ def load_google_trends(keyword):
 
 try:
     trends_df = load_google_trends(google_keyword)
-    st.line_chart(trends_df.set_index("date")[google_keyword], use_container_width=True, height=300)
+    col3.line_chart(trends_df.set_index("date")[google_keyword], use_container_width=True, height=280)
 except Exception as e:
-    st.warning(f"Google Trends data could not be loaded: {e}")
+    col3.warning(f"Google Trends data could not be loaded: {e}")
 
 # --- Raw Data Table ---
 if st.checkbox("Show Raw Data"):
