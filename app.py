@@ -51,8 +51,11 @@ def compute_rsi(series, period=14):
 
 data = add_indicators(data)
 
+# --- Layout for Compact View ---
+st.subheader("Real-Time Trading Overview")
+col1, col2 = st.columns(2)
+
 # --- Candlestick Chart ---
-st.subheader("Candlestick Chart with Indicators")
 candlestick = go.Figure()
 candlestick.add_trace(go.Candlestick(x=data.index,
                                      open=data["Open"],
@@ -61,15 +64,14 @@ candlestick.add_trace(go.Candlestick(x=data.index,
                                      close=data["Close"], name="Candlestick"))
 candlestick.add_trace(go.Scatter(x=data.index, y=data["SMA20"], line=dict(color='blue', width=1), name="SMA20"))
 candlestick.add_trace(go.Scatter(x=data.index, y=data["SMA50"], line=dict(color='orange', width=1), name="SMA50"))
-candlestick.update_layout(xaxis_rangeslider_visible=False, height=600)
-st.plotly_chart(candlestick, use_container_width=True)
+candlestick.update_layout(xaxis_rangeslider_visible=False, height=400, margin=dict(l=10, r=10, t=30, b=10))
+col1.plotly_chart(candlestick, use_container_width=True)
 
 # --- RSI Indicator ---
-st.subheader("Relative Strength Index (RSI)")
 rsi_fig = go.Figure()
 rsi_fig.add_trace(go.Scatter(x=data.index, y=data["RSI"], line=dict(color='purple', width=1), name="RSI"))
-rsi_fig.update_layout(height=300, yaxis_title="RSI")
-st.plotly_chart(rsi_fig, use_container_width=True)
+rsi_fig.update_layout(height=400, yaxis_title="RSI", margin=dict(l=10, r=10, t=30, b=10))
+col2.plotly_chart(rsi_fig, use_container_width=True)
 
 # --- Google Trends ---
 st.subheader(f"Google Trends for '{google_keyword}'")
@@ -82,7 +84,7 @@ def load_google_trends(keyword):
 
 try:
     trends_df = load_google_trends(google_keyword)
-    st.line_chart(trends_df.set_index("date")[google_keyword])
+    st.line_chart(trends_df.set_index("date")[google_keyword], use_container_width=True, height=300)
 except Exception as e:
     st.warning(f"Google Trends data could not be loaded: {e}")
 
