@@ -1,65 +1,92 @@
 import streamlit as st
+import yfinance as yf
 import pandas as pd
+import datetime
+import plotly.graph_objs as go
+from pytrends.request import TrendReq
 
-def generate_annotation(h, c, n, d1, l1, s1, p1, m1, r1, d2, l2, s2, p2, m2, r2):
-    math_annotation = (
-        f"({h},{c},{n}) \\times \\left[ "
-        f"\\frac{{{d2}}}{{{d1}}} \\Bigg| "
-        f"\\frac{{{l2}}}{{{l1}}} \\Bigg| "
-        f"\\frac{{{s2}}}{{{s1}}} \\Bigg| "
-        f"\\frac{{{p2}}}{{{p1}}} \\Bigg| "
-        f"\\frac{{{m2}}}{{{m1}}} \\Bigg| "
-        f"\\frac{{{r2}}}{{{r1}}} "
-        f"\\right]"
-    )
+# --- Page Configuration ---
+st.set_page_config(page_title="Real-Time Trading Dashboard", layout="wide")
 
-    csv_row = [h, c, n, d1, l1, s1, p1, m1, r1, d2, l2, s2, p2, m2, r2]
-    return math_annotation, csv_row
+# --- Sidebar Controls ---
+st.sidebar.title("Stock Selection")
+ticker_symbol = st.sidebar.text_input("Enter Ticker Symbol (e.g., AAPL, MSFT)", "AAPL")
 
-st.title("SASL Annotation Generator")
+# Time Range
+st.sidebar.subheader("Time Period")
+period = st.sidebar.selectbox("Period", ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"], index=2)
+interval = st.sidebar.selectbox("Interval", ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1d", "5d", "1wk", "1mo", "3mo"], index=6)
 
-# Layout for global parameters
-st.subheader("Global Parameters")
-col_global1, col_global2, col_global3 = st.columns(3)
-with col_global1:
-    h = st.selectbox("Handedness (H)", [1, 2], index=0)
-with col_global2:
-    c = st.selectbox("Contact (C)", [0, 1], index=0)
-with col_global3:
-    n = st.selectbox("Mouthing (N)", [1, 2], index=0)
+# Google Trends Keyword
+st.sidebar.subheader("Google Trends")
+google_keyword = st.sidebar.text_input("Enter keyword for Google Trends", ticker_symbol)
 
-# Layout for dominant and non-dominant hand
-st.subheader("Dominant and Non-Dominant Hand Parameters")
-col1, col2 = st.columns(2)
-with col1:
-    st.text("Dominant Hand")
-    d1 = 1  # Always dominant hand
-    l1 = st.slider("Location (L1)", 0, 10, 1)
-    s1 = st.text_input("Handshape (S1)", "B")
-    p1 = st.slider("Palm Orientation (P1)", 1, 5, 1)
-    m1 = st.slider("Movement (M1)", 0, 23, 4)
-    r1 = st.slider("Repetition (R1)", 0, 1, 1)
+# --- Load Stock Data ---
+st.title("Real-Time Trading Dashboard")
+st.write(f"Showing data for **{ticker_symbol}** with period `{period}` and interval `{interval}`")
 
-with col2:
-    st.text("Non-Dominant Hand")
-    d2 = st.selectbox("Non-Dominant Hand (D2)", [0, 2], index=0)
-    l2 = st.slider("Location (L2)", 0, 10, 0)
-    s2 = st.text_input("Handshape (S2)", "0")
-    p2 = st.slider("Palm Orientation (P2)", 0, 5, 0)
-    m2 = st.slider("Movement (M2)", 0, 23, 0)
-    r2 = st.slider("Repetition (R2)", 0, 1, 0)
+@st.cache_data(ttl=3600)
+def load_stock_data(ticker):
+    stock = yf.Ticker(ticker)
+    return stock.history(period=period, interval=interval)
 
-# Calculate button
-if st.button("Calculate Annotation"):
-    math_annotation, csv_row = generate_annotation(h, c, n, d1, l1, s1, p1, m1, r1, d2, l2, s2, p2, m2, r2)
+data = load_stock_data(ticker_symbol)
 
-    # Display results
-    st.subheader("Mathematical Notation")
-    st.latex(math_annotation)
+# --- Technical Indicators ---
+def add_indicators(df):
+    df["SMA20"] = df["Close"].rolling(window=20).mean()
+    df["SMA50"] = df["Close"].rolling(window=50).mean()
+    df["EMA20"] = df["Close"].ewm(span=20, adjust=False).mean()
+    df["RSI"] = compute_rsi(df["Close"])
+    return df
 
-    st.subheader("CSV Output")
-    st.write(",".join(map(str, csv_row)))
+def compute_rsi(series, period=14):
+    delta = series.diff()
+    gain = delta.where(delta > 0, 0.0)
+    loss = -delta.where(delta < 0, 0.0)
+    avg_gain = gain.rolling(window=period).mean()
+    avg_loss = loss.rolling(window=period).mean()
+    rs = avg_gain / avg_loss
+    return 100 - (100 / (1 + rs))
 
-    # Allow CSV Download
-    df = pd.DataFrame([csv_row], columns=["H", "C", "N", "D1", "L1", "S1", "P1", "M1", "R1", "D2", "L2", "S2", "P2", "M2", "R2"])
-    st.download_button("Download CSV", df.to_csv(index=False), "annotation.csv", "text/csv")
+data = add_indicators(data)
+
+# --- Candlestick Chart ---
+st.subheader("Candlestick Chart with Indicators")
+candlestick = go.Figure()
+candlestick.add_trace(go.Candlestick(x=data.index,
+                                     open=data["Open"],
+                                     high=data["High"],
+                                     low=data["Low"],
+                                     close=data["Close"], name="Candlestick"))
+candlestick.add_trace(go.Scatter(x=data.index, y=data["SMA20"], line=dict(color='blue', width=1), name="SMA20"))
+candlestick.add_trace(go.Scatter(x=data.index, y=data["SMA50"], line=dict(color='orange', width=1), name="SMA50"))
+candlestick.update_layout(xaxis_rangeslider_visible=False, height=600)
+st.plotly_chart(candlestick, use_container_width=True)
+
+# --- RSI Indicator ---
+st.subheader("Relative Strength Index (RSI)")
+rsi_fig = go.Figure()
+rsi_fig.add_trace(go.Scatter(x=data.index, y=data["RSI"], line=dict(color='purple', width=1), name="RSI"))
+rsi_fig.update_layout(height=300, yaxis_title="RSI")
+st.plotly_chart(rsi_fig, use_container_width=True)
+
+# --- Google Trends ---
+st.subheader(f"Google Trends for '{google_keyword}'")
+@st.cache_data(ttl=3600)
+def load_google_trends(keyword):
+    pytrends = TrendReq()
+    pytrends.build_payload([keyword], timeframe='now 7-d')
+    df = pytrends.interest_over_time()
+    return df.reset_index()
+
+try:
+    trends_df = load_google_trends(google_keyword)
+    st.line_chart(trends_df.set_index("date")[google_keyword])
+except Exception as e:
+    st.warning(f"Google Trends data could not be loaded: {e}")
+
+# --- Raw Data Table ---
+if st.checkbox("Show Raw Data"):
+    st.subheader("Raw Stock Data")
+    st.dataframe(data.tail(100))
