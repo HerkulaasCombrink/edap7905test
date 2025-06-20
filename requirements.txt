@@ -1,5 +1,5 @@
-streamlit>=1.32.0
-yfinance>=0.2.36
-pandas>=2.2.0
-plotly>=5.20.0
-pytrends>=4.9.2
+streamlit
+tensorflow
+numpy
+pillow
+opencv-python
