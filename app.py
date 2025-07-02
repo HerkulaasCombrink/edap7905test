@@ -1,63 +1,30 @@
 import streamlit as st
-import tensorflow as tf
-import numpy as np
-from PIL import Image
-import os
+from utils.movement import move_ball, get_position, render_canvas
 
-st.set_page_config(page_title='SASL Letter A Classifier', layout='centered')
-st.title('🤟 SASL Letter A Classifier')
-st.markdown("""
-Upload a grayscale image of a signed letter. The app will try to classify it as **A** or **Not A**.
-""")
+st.set_page_config(layout="centered")
+st.title("🎯 Learn Python by Moving the Ball!")
 
-# Define path to model
-MODEL_PATH = 'letter_a_model_from_images.h5'
+# Initialize position
+if "x" not in st.session_state:
+    st.session_state.x = 5
+    st.session_state.y = 5
 
-# Load the model safely
-@st.cache_resource
-def load_model():
-    if not os.path.exists(MODEL_PATH):
-        st.warning(f"Model file not found: `{MODEL_PATH}`. Please upload it to the app directory.")
-        return None
+st.write("### 🧪 Try writing Python code below to move the ball!")
+st.code("Try: move_right(), move_up(), move_left(), move_down()")
+
+user_code = st.text_area("Enter your Python code below", height=150)
+
+# Show current canvas
+render_canvas(st.session_state.x, st.session_state.y)
+
+if st.button("Run Code"):
     try:
-        model = tf.keras.models.load_model(MODEL_PATH)
-        return model
+        local_scope = {}
+        exec(user_code, {"move_right": lambda: move_ball("right"),
+                         "move_left": lambda: move_ball("left"),
+                         "move_up": lambda: move_ball("up"),
+                         "move_down": lambda: move_ball("down")},
+             local_scope)
+        st.success("✅ Code executed successfully! Ball moved.")
     except Exception as e:
-        st.error(f"Error loading model: {e}")
-        return None
-
-model = load_model()
-
-# Image preprocessing function
-def preprocess_image(image, target_size=(64, 64)):
-    try:
-        img = image.convert('L')  # Convert to grayscale
-        img = img.resize(target_size)
-        img_array = np.array(img).astype('float32') / 255.0
-        img_array = img_array.reshape(1, target_size[0], target_size[1], 1)
-        return img_array
-    except Exception as e:
-        st.error(f"Image preprocessing failed: {e}")
-        return None
-
-# File uploader
-uploaded_file = st.file_uploader("Upload a grayscale image (JPG or PNG)", type=["jpg", "jpeg", "png"])
-
-if uploaded_file is not None:
-    image = Image.open(uploaded_file)
-    st.image(image, caption="Uploaded Image", use_column_width=True)
-
-    input_data = preprocess_image(image)
-    if input_data is not None and model:
-        try:
-            prediction = model.predict(input_data)
-            predicted_class = np.argmax(prediction)
-            confidence = float(prediction[0][predicted_class])
-            label = "A" if predicted_class == 1 else "Not A"
-
-            st.subheader(f"Prediction: {label}")
-            st.write(f"Confidence: {confidence:.2f}")
-        except Exception as e:
-            st.error(f"Prediction failed: {e}")
-    elif model is None:
-        st.info("Model is not loaded. Please upload the model file to run predictions.")
+        st.error(f"❌ Error: {e}")
