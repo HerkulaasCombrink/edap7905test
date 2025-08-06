@@ -2,21 +2,62 @@ import streamlit as st
 import random
 
 # Question generators for school-leaver math level
-def generate_linear_question():
-    a = random.randint(1, 10)
-    b = random.randint(-20, 20)
-    question = f"Solve for x: {a}x + {b} = 0"
-    solution = -b / a
+
+def generate_addition_word_problem():
+    x = random.randint(5, 20)
+    y = random.randint(1, 15)
+    question = f"Sarah has {x} apples and buys {y} more. How many apples does she have now?"
+    solution = x + y
     hints = [
-        f"First, subtract {b} from both sides to isolate the term with x.",
-        f"Now you have {a}x = {-b}. Divide both sides by {a} to solve for x.",
+        f"What operation combines {x} and {y}? Consider adding them.",
+        f"Calculate {x} + {y} to find the total number of apples.",
     ]
     return question, solution, hints
 
-# Add more generators here (e.g., quadratic) and their hints
+
+def generate_subtraction_word_problem():
+    x = random.randint(20, 50)
+    y = random.randint(1, x - 1)
+    question = f"James had {x} marbles but gave {y} to his friend. How many marbles does he have left?"
+    solution = x - y
+    hints = [
+        f"Think about removing {y} from {x}. What operation do you use?",
+        f"Compute {x} - {y} to get the remaining marbles.",
+    ]
+    return question, solution, hints
+
+
+def generate_multiplication_word_problem():
+    x = random.randint(2, 10)
+    y = random.randint(2, 10)
+    question = f"Each pack contains {x} pencils. If you buy {y} packs, how many pencils do you get in total?"
+    solution = x * y
+    hints = [
+        f"Multiplication helps when you have {y} groups of {x}.",
+        f"Calculate {x} * {y} to find the total pencils.",
+    ]
+    return question, solution, hints
+
+
+def generate_division_word_problem():
+    total = random.randint(20, 100)
+    parts = random.randint(2, 10)
+    question = f"{total} cookies are shared equally among {parts} children. How many cookies does each child get?"
+    solution = total / parts
+    hints = [
+        f"Division splits {total} into {parts} equal parts.",
+        f"Compute {total} ÷ {parts} to find how many per child.",
+    ]
+    return question, solution, hints
+
 
 def generate_random_question():
-    generators = [generate_linear_question]
+    generators = [
+        generate_addition_word_problem,
+        generate_subtraction_word_problem,
+        generate_multiplication_word_problem,
+        generate_division_word_problem,
+    ]
     return random.choice(generators)()
 
 # Initialize or reset session state
@@ -27,34 +68,43 @@ if "question" not in st.session_state or st.button("New Question"):
     st.session_state.hints = hint_list
     st.session_state.hint_index = 0
     st.session_state.completed = False
+    st.session_state.user_answer = None
 
-st.title("📚 Math Tutor for School Leavers")
-st.subheader("Solve the following question:")
+st.title("📚 Interactive Math Word Problems")
+st.subheader("Try to solve this word problem:")
 st.write(f"**{st.session_state.question}**")
 
-# Student answer input
-user_input = st.text_input("Your answer:")
-if st.button("Submit Answer") and not st.session_state.completed:
-    if not user_input.strip():
-        st.warning("Please enter an answer.")
-    else:
-        try:
-            student_val = float(user_input)
-            if abs(student_val - st.session_state.solution) < 1e-3:
-                st.success("Correct! 🎉 Well done.")
-                st.session_state.completed = True
-            else:
-                idx = st.session_state.hint_index
-                if idx < len(st.session_state.hints):
-                    hint = st.session_state.hints[idx]
-                    st.info(f"Hint {idx+1}: {hint}")
-                    st.session_state.hint_index += 1
-                else:
-                    st.error(f"No more hints available. The solution is x = {st.session_state.solution}")
-                    st.session_state.completed = True
-        except ValueError:
-            st.error("Please enter a valid numeric answer.")
-
-# Instructions to run
+# User input section
 st.markdown("---")
-st.write("Run this app with: `streamlit run streamlit_math_tutor.py`. No API key is needed—hints are generated locally.")
+col1, col2 = st.columns([3, 1])
+with col1:
+    user_input = st.number_input("Your answer:", value=0.0, key="user_answer")
+with col2:
+    if st.button("Get Hint") and not st.session_state.completed:
+        if st.session_state.hint_index < len(st.session_state.hints):
+            hint = st.session_state.hints[st.session_state.hint_index]
+            st.info(f"Hint {st.session_state.hint_index + 1}: {hint}")
+            st.session_state.hint_index += 1
+        else:
+            st.warning("No more hints available.")
+
+if st.button("Check Answer") and not st.session_state.completed:
+    try:
+        if abs(user_input - st.session_state.solution) < 1e-3:
+            st.success("🎉 Correct! Great job.")
+            st.session_state.completed = True
+        else:
+            st.error("That’s not quite right. Try again or get a hint!")
+    except Exception:
+        st.error("Please enter a valid number.")
+
+# Completion message and next steps
+if st.session_state.completed:
+    st.balloons()
+    st.write(f"The correct answer was **{st.session_state.solution}**.")
+    if st.button("New Question"):
+        # Trigger rerun for a new question
+        st.session_state.pop("question")
+
+st.markdown("---")
+st.write("Run with: `streamlit run streamlit_math_tutor.py`. No API key needed.")
