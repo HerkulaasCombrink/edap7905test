@@ -1,78 +1,74 @@
 import streamlit as st
-from PIL import Image, ImageDraw
+import random
+import openai
+import os
 
-st.set_page_config(layout="centered")
-st.title("🎯 Learn Python by Moving the Ball!")
+# Set your OpenAI API key as an environment variable or via Streamlit secrets
+openai.api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
 
-# Target coordinates for the challenge
-TARGET_X = 9
-TARGET_Y = 0
+# Question generators for school-leaver math level
 
-# Initialize ball position
-if "x" not in st.session_state:
-    st.session_state.x = 5
-    st.session_state.y = 5
+def generate_linear_question():
+    a = random.randint(1, 10)
+    b = random.randint(-20, 20)
+    question = f"Solve for x: {a}x + {b} = 0"
+    solution = -b / a
+    return question, solution
 
-# Movement functions
-def move_right():
-    st.session_state.x = min(st.session_state.x + 1, 9)
+# Add more generators here (e.g., quadratic, basic calculus)
+def generate_random_question():
+    generators = [generate_linear_question]
+    return random.choice(generators)()
 
-def move_left():
-    st.session_state.x = max(st.session_state.x - 1, 0)
+# Call OpenAI to get a hint
 
-def move_up():
-    st.session_state.y = max(st.session_state.y - 1, 0)
+def get_hint(question, student_answer):
+    messages = [
+        {"role": "system", "content": "You are a patient math tutor. Provide a helpful hint that guides the student toward the solution without giving it away."},
+        {"role": "user", "content": f"Question: {question}\nStudent's answer: {student_answer}\nGive a hint to help the student."}
+    ]
+    resp = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=messages,
+        temperature=0.7,
+    )
+    return resp.choices[0].message.content
 
-def move_down():
-    st.session_state.y = min(st.session_state.y + 1, 9)
+# Initialize or reset session state
+if "question" not in st.session_state or st.button("New Question"):
+    q, sol = generate_random_question()
+    st.session_state.question = q
+    st.session_state.solution = sol
+    st.session_state.history = []
 
-# Draw the canvas
-def render_canvas(x, y, target=False):
-    canvas_size = 300
-    grid_size = 10
-    cell_size = canvas_size // grid_size
+st.title("📚 Math Tutor for School Leavers")
+st.subheader("Solve the following question:")
+st.write(f"**{st.session_state.question}**")
 
-    img = Image.new("RGB", (canvas_size, canvas_size), color="white")
-    draw = ImageDraw.Draw(img)
+# Student answer input
+user_input = st.text_input("Your answer:")
+if st.button("Submit Answer"):
+    if not user_input.strip():
+        st.warning("Please enter an answer.")
+    else:
+        try:
+            # Numeric comparison; adjust tolerance as needed
+            student_val = float(user_input)
+            if abs(student_val - st.session_state.solution) < 1e-3:
+                st.success("Correct! 🎉 Well done.")
+            else:
+                hint = get_hint(st.session_state.question, user_input)
+                st.session_state.history.append(hint)
+        except ValueError:
+            st.error("Please enter a valid numeric answer.")
 
-    for i in range(0, canvas_size, cell_size):
-        draw.line((i, 0, i, canvas_size), fill="gray")
-        draw.line((0, i, canvas_size, i), fill="gray")
+# Display hints/chat history
+if st.session_state.history:
+    st.markdown("---")
+    st.subheader("Hints from your tutor:")
+    for i, h in enumerate(st.session_state.history, 1):
+        st.info(f"**Hint {i}:** {h}")
 
-    # Draw target position
-    if target:
-        tx, ty = TARGET_X * cell_size, TARGET_Y * cell_size
-        draw.rectangle([tx, ty, tx + cell_size, ty + cell_size], outline="red", width=3)
-
-    # Draw ball
-    ball_pos = (x * cell_size, y * cell_size,
-                (x + 1) * cell_size, (y + 1) * cell_size)
-    draw.ellipse(ball_pos, fill="blue")
-
-    st.image(img)
-
-# Challenge description
-st.subheader("🧩 Challenge: Move the ball to the top-right corner")
-st.markdown("Write code like `move_right()` and `move_up()` below to move the blue ball to the red box at **(x=9, y=0)**.")
-
-# Code input
-user_code = st.text_area("Enter your Python code below:", height=150)
-
-# Show canvas
-render_canvas(st.session_state.x, st.session_state.y, target=True)
-
-# Check result
-if st.button("Run Code"):
-    try:
-        exec(user_code, {
-            "move_right": move_right,
-            "move_left": move_left,
-            "move_up": move_up,
-            "move_down": move_down
-        })
-        if st.session_state.x == TARGET_X and st.session_state.y == TARGET_Y:
-            st.success("🎉 Well done! You reached the target.")
-        else:
-            st.info("✅ Code ran! But the ball is not at the target yet. Try again.")
-    except Exception as e:
-        st.error(f"❌ Error in your code: {e}")
+# Instructions to run
+st.markdown("---")
+st.write("Run this app with: `streamlit run streamlit_math_tutor.py` and make sure your OpenAI API key is set.")
