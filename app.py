@@ -3,12 +3,9 @@ import streamlit as st
 
 # Embeddings import compatibility
 try:
-    from langchain.embeddings.openai import OpenAIEmbeddings
+    from langchain_openai import OpenAIEmbeddings
 except ImportError:
-    try:
-        from langchain.embeddings import OpenAIEmbeddings
-    except ImportError:
-        raise ImportError("OpenAIEmbeddings not found: please install langchain>=0.0.178")
+    raise ImportError("OpenAIEmbeddings not found: please install the 'langchain-openai' package")
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import FAISS
