@@ -1,10 +1,16 @@
 import os
 import streamlit as st
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+# Embeddings import compatibility
 try:
     from langchain.embeddings.openai import OpenAIEmbeddings
 except ImportError:
-    from langchain.embeddings import OpenAIEmbeddings
+    try:
+        from langchain.embeddings import OpenAIEmbeddings
+    except ImportError:
+        raise ImportError("OpenAIEmbeddings not found: please install langchain>=0.0.178")
+
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import FAISS
 from langchain.llms import OpenAI
 from langchain.chains import RetrievalQA
@@ -55,7 +61,7 @@ else:
     if st.button("Answer me") and query:
         with st.spinner("Retrieving relevant passages and generating answer…"):
             retriever = st.session_state.faiss_index.as_retriever(search_kwargs={"k": 4})
-            llm = OpenAI(openai_api_key=openai_api_key, model_name="gpt-3.5-turbo", temperature=0.1)
+            llm = OpenAI(api_key=openai_api_key, model_name="gpt-3.5-turbo", temperature=0.1)
             qa_chain = RetrievalQA.from_chain_type(
                 llm=llm,
                 chain_type="stuff",
