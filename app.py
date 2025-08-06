@@ -1,68 +1,69 @@
+import os
 import streamlit as st
-import numpy as np
-import pandas as pd
-from sklearn.datasets import make_moons
-from sklearn.neural_network import MLPClassifier
-from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.vectorstores import FAISS
+from langchain.llms import OpenAI
+from langchain.chains import RetrievalQA
+import PyPDF2
 
-st.set_page_config(layout="wide", page_title="AI Model Playground")
+# --- Configuration ---
+# Set your OpenAI API key via env var or Streamlit secrets
+openai_api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
 
-st.title("🤖 AI Model Playground")
-st.markdown("""
-An interactive tool to learn how neural network hyperparameters affect
-model performance on a simple dataset.
-""")
+# Initialize embeddings
+embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
 
-# Generate synthetic dataset
-X, y = make_moons(n_samples=500, noise=0.2, random_state=42)
+# Initialize session state for FAISS index
+if "faiss_index" not in st.session_state:
+    st.session_state.faiss_index = None
 
-# Sidebar: hyperparameters
-st.sidebar.header("Hyperparameters")
-hidden_layers = st.sidebar.slider("Hidden Layer Sizes", 1, 5, (3, 3), help="Tuple of layer sizes")
-activation = st.sidebar.selectbox("Activation", ["relu", "tanh", "logistic"])
-learning_rate = st.sidebar.select_slider("Learning Rate", options=[1e-1, 1e-2, 1e-3, 1e-4], value=1e-3)
-epochs = st.sidebar.slider("Epochs", 10, 200, 50)
+st.set_page_config(page_title="🔍 RAG QA App", layout="wide")
+st.title("🔍 Retrieval-Augmented QA with Streamlit")
 
-# Split data
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=1)
+# Sidebar: upload & index docs
+st.sidebar.header("📄 Document Indexing")
+uploaded_files = st.sidebar.file_uploader(
+    "Upload txt or PDF", type=["txt", "pdf"], accept_multiple_files=True
+)
+if st.sidebar.button("Index Documents") and uploaded_files:
+    docs = []
+    for file in uploaded_files:
+        if file.type == "application/pdf":
+            reader = PyPDF2.PdfReader(file)
+            text = "".join([p.extract_text() or '' for p in reader.pages])
+        else:
+            text = file.read().decode("utf-8")
+        docs.append(text)
+    # Split into chunks
+    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    chunks = splitter.split_text("\n".join(docs))
+    # Build FAISS index
+    index = FAISS.from_texts(chunks, embeddings)
+    st.session_state.faiss_index = index
+    st.sidebar.success(f"Indexed {len(chunks)} chunks!")
 
-# Initialize model
-model = MLPClassifier(hidden_layer_sizes=hidden_layers,
-                      activation=activation,
-                      learning_rate_init=learning_rate,
-                      max_iter=1,
-                      warm_start=True,
-                      random_state=1)
-
-# Training loop with live plotting
-history = []
-for epoch in range(1, epochs + 1):
-    model.fit(X_train, y_train)
-    score = model.score(X_test, y_test)
-    history.append(score)
-    if epoch % (epochs // 5) == 0 or epoch == epochs:
-        st.write(f"Epoch {epoch}/{epochs} - Test Accuracy: {score:.3f}")
-
-# Layout: two columns for plots
-col1, col2 = st.columns(2)
-with col1:
-    st.subheader("Decision Boundary")
-    # Plot decision boundary
-    xx, yy = np.meshgrid(np.linspace(X[:,0].min()-0.5, X[:,0].max()+0.5, 200),
-                         np.linspace(X[:,1].min()-0.5, X[:,1].max()+0.5, 200))
-    Z = model.predict(np.c_[xx.ravel(), yy.ravel()])
-    Z = Z.reshape(xx.shape)
-    fig, ax = plt.subplots()
-    ax.contourf(xx, yy, Z, alpha=0.2)
-    ax.scatter(X_test[:,0], X_test[:,1], c=y_test, edgecolor='k')
-    ax.set_title("Test Set Decision Boundary")
-    st.pyplot(fig)
-
-with col2:
-    st.subheader("Accuracy over Epochs")
-    df_hist = pd.DataFrame({'Accuracy': history})
-    st.line_chart(df_hist)
-
-st.markdown("---")
-st.write("Adjust the sliders to see how hyperparameters impact accuracy and decision boundary.")
+# Main: QA interface
+st.header("💬 Ask a Question")
+if st.session_state.faiss_index is None:
+    st.info("Upload and index documents in the sidebar first.")
+else:
+    query = st.text_input("Enter your question:")
+    if st.button("Answer me") and query:
+        with st.spinner("Retrieving relevant passages and generating answer…"):
+            retriever = st.session_state.faiss_index.as_retriever(search_kwargs={"k": 4})
+            llm = OpenAI(openai_api_key=openai_api_key, model_name="gpt-3.5-turbo", temperature=0.1)
+            qa_chain = RetrievalQA.from_chain_type(
+                llm=llm,
+                chain_type="stuff",
+                retriever=retriever,
+                return_source_documents=True
+            )
+            result = qa_chain(query)
+            answer = result["result"]
+            sources = result["source_documents"]
+        st.subheader("Answer:")
+        st.write(answer)
+        st.subheader("Source Passages:")
+        for doc in sources:
+            st.markdown(f"> {doc.page_content[:500]}...")
