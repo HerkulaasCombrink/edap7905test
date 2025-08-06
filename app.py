@@ -1,141 +1,68 @@
 import streamlit as st
-import random
+import numpy as np
 import pandas as pd
+from sklearn.datasets import make_moons
+from sklearn.neural_network import MLPClassifier
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 
-# Question generators for school-leaver math level
+st.set_page_config(layout="wide", page_title="AI Model Playground")
 
-def generate_addition_word_problem():
-    x = random.randint(5, 20)
-    y = random.randint(1, 15)
-    question = f"Sarah has {x} apples and buys {y} more. How many apples does she have now?"
-    solution = x + y
-    hints = [
-        f"What operation combines {x} and {y}? Consider adding them.",
-        f"Calculate {x} + {y} to find the total number of apples.",
-    ]
-    return question, solution, hints
+st.title("🤖 AI Model Playground")
+st.markdown("""
+An interactive tool to learn how neural network hyperparameters affect
+model performance on a simple dataset.
+""")
 
+# Generate synthetic dataset
+X, y = make_moons(n_samples=500, noise=0.2, random_state=42)
 
-def generate_subtraction_word_problem():
-    x = random.randint(20, 50)
-    y = random.randint(1, x - 1)
-    question = f"James had {x} marbles but gave {y} to his friend. How many marbles does he have left?"
-    solution = x - y
-    hints = [
-        f"Think about removing {y} from {x}. What operation do you use?",
-        f"Compute {x} - {y} to get the remaining marbles.",
-    ]
-    return question, solution, hints
+# Sidebar: hyperparameters
+st.sidebar.header("Hyperparameters")
+hidden_layers = st.sidebar.slider("Hidden Layer Sizes", 1, 5, (3, 3), help="Tuple of layer sizes")
+activation = st.sidebar.selectbox("Activation", ["relu", "tanh", "logistic"])
+learning_rate = st.sidebar.select_slider("Learning Rate", options=[1e-1, 1e-2, 1e-3, 1e-4], value=1e-3)
+epochs = st.sidebar.slider("Epochs", 10, 200, 50)
 
+# Split data
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=1)
 
-def generate_multiplication_word_problem():
-    x = random.randint(2, 10)
-    y = random.randint(2, 10)
-    question = f"Each pack contains {x} pencils. If you buy {y} packs, how many pencils do you get in total?"
-    solution = x * y
-    hints = [
-        f"Multiplication helps when you have {y} groups of {x}.",
-        f"Calculate {x} * {y} to find the total pencils.",
-    ]
-    return question, solution, hints
+# Initialize model
+model = MLPClassifier(hidden_layer_sizes=hidden_layers,
+                      activation=activation,
+                      learning_rate_init=learning_rate,
+                      max_iter=1,
+                      warm_start=True,
+                      random_state=1)
 
+# Training loop with live plotting
+history = []
+for epoch in range(1, epochs + 1):
+    model.fit(X_train, y_train)
+    score = model.score(X_test, y_test)
+    history.append(score)
+    if epoch % (epochs // 5) == 0 or epoch == epochs:
+        st.write(f"Epoch {epoch}/{epochs} - Test Accuracy: {score:.3f}")
 
-def generate_division_word_problem():
-    total = random.randint(20, 100)
-    parts = random.randint(2, 10)
-    question = f"{total} cookies are shared equally among {parts} children. How many cookies does each child get?"
-    solution = total / parts
-    hints = [
-        f"Division splits {total} into {parts} equal parts.",
-        f"Compute {total} ÷ {parts} to find how many per child.",
-    ]
-    return question, solution, hints
-
-
-def generate_random_question():
-    generators = [
-        generate_addition_word_problem,
-        generate_subtraction_word_problem,
-        generate_multiplication_word_problem,
-        generate_division_word_problem,
-    ]
-    return random.choice(generators)()
-
-# Initialize or reset session state for questions and metrics
-if "question" not in st.session_state or st.button("New Question", key="new_question_init"):
-    q, sol, hint_list = generate_random_question()
-    st.session_state.question = q
-    st.session_state.solution = sol
-    st.session_state.hints = hint_list
-    st.session_state.hint_index = 0
-    st.session_state.completed = False
-    st.session_state.user_answer = 0.0
-    # Metrics lists
-    st.session_state.conceptual = []
-    st.session_state.contextual = []
-    st.session_state.learning = []
-
-# Title and question display
-st.title("📚 Interactive Math Word Problems")
-st.subheader("Try to solve this word problem:")
-st.write(f"**{st.session_state.question}**")
-
-# User input section
-st.markdown("---")
-col1, col2 = st.columns([3, 1])
+# Layout: two columns for plots
+col1, col2 = st.columns(2)
 with col1:
-    user_input = st.number_input("Your answer:", value=st.session_state.user_answer, key="user_answer")
+    st.subheader("Decision Boundary")
+    # Plot decision boundary
+    xx, yy = np.meshgrid(np.linspace(X[:,0].min()-0.5, X[:,0].max()+0.5, 200),
+                         np.linspace(X[:,1].min()-0.5, X[:,1].max()+0.5, 200))
+    Z = model.predict(np.c_[xx.ravel(), yy.ravel()])
+    Z = Z.reshape(xx.shape)
+    fig, ax = plt.subplots()
+    ax.contourf(xx, yy, Z, alpha=0.2)
+    ax.scatter(X_test[:,0], X_test[:,1], c=y_test, edgecolor='k')
+    ax.set_title("Test Set Decision Boundary")
+    st.pyplot(fig)
+
 with col2:
-    if st.button("Get Hint", key="get_hint") and not st.session_state.completed:
-        if st.session_state.hint_index < len(st.session_state.hints):
-            hint = st.session_state.hints[st.session_state.hint_index]
-            st.info(f"Hint {st.session_state.hint_index + 1}: {hint}")
-            st.session_state.hint_index += 1
-        else:
-            st.warning("No more hints available.")
+    st.subheader("Accuracy over Epochs")
+    df_hist = pd.DataFrame({'Accuracy': history})
+    st.line_chart(df_hist)
 
-# Check answer and update metrics
-if st.button("Check Answer", key="check_answer") and not st.session_state.completed:
-    try:
-        correct = abs(user_input - st.session_state.solution) < 1e-3
-        if correct:
-            st.success("🎉 Correct! Great job.")
-            st.session_state.completed = True
-        else:
-            st.error("That’s not quite right. Try again or get a hint!")
-        # Compute metrics
-        # Conceptual: score = 1 - (hints used / total hints)
-        conceptual_score = max(0, 1 - st.session_state.hint_index / len(st.session_state.hints))
-        # Contextual: correct on first attempt without hints
-        contextual_score = 1.0 if correct and st.session_state.hint_index == 0 else 0.0
-        # Learning: running average of conceptual scores
-        prev = st.session_state.learning[-1] if st.session_state.learning else 0.0
-        learning_score = (prev + conceptual_score) / 2 if st.session_state.learning else conceptual_score
-        # Append to session lists
-        st.session_state.conceptual.append(conceptual_score)
-        st.session_state.contextual.append(contextual_score)
-        st.session_state.learning.append(learning_score)
-    except Exception:
-        st.error("Please enter a valid number.")
-
-# Completion message and next steps
-if st.session_state.completed:
-    st.balloons()
-    st.write(f"The correct answer was **{st.session_state.solution}**.")
-    if st.button("New Question", key="new_question_completed"):
-        del st.session_state["question"]
-
-# Display metrics graphs if any data exists
-if st.session_state.conceptual:
-    st.markdown("---")
-    st.subheader("Progress Metrics")
-    df = pd.DataFrame({
-        "Conceptual Understanding": st.session_state.conceptual,
-        "Contextual Reasoning": st.session_state.contextual,
-        "Learning": st.session_state.learning,
-    })
-    st.line_chart(df)
-
-# Footer
 st.markdown("---")
-st.write("Run with: `streamlit run streamlit_math_tutor.py`. No API key needed.")
+st.write("Adjust the sliders to see how hyperparameters impact accuracy and decision boundary.")
