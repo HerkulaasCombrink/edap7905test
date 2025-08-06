@@ -1,72 +1,89 @@
 import os
 import streamlit as st
-
-# Embeddings import
-from langchain_openai import OpenAIEmbeddings
-
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import FAISS
-from langchain.llms import OpenAI
-from langchain.chains import RetrievalQA
+import openai
 import PyPDF2
+from openai.embeddings_utils import get_embedding
+import numpy as np
+import faiss
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 # --- Configuration ---
-# Set your OpenAI API key via env var or Streamlit secrets
-openai_api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
+# OpenAI key via env or Streamlit secrets
+openai.api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
 
-# Initialize embeddings
-embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
-
-# Initialize session state for FAISS index
+# Session state initialization
 if "faiss_index" not in st.session_state:
     st.session_state.faiss_index = None
+    st.session_state.text_chunks = []
 
 st.set_page_config(page_title="🔍 RAG QA App", layout="wide")
-st.title("🔍 Retrieval-Augmented QA with Streamlit")
+st.title("🔍 Retrieval-Augmented QA (Custom) with Streamlit")
 
-# Sidebar: upload & index docs
+# Sidebar: Index documents
 st.sidebar.header("📄 Document Indexing")
 uploaded_files = st.sidebar.file_uploader(
     "Upload txt or PDF", type=["txt", "pdf"], accept_multiple_files=True
 )
 if st.sidebar.button("Index Documents") and uploaded_files:
-    docs = []
+    raw_texts = []
     for file in uploaded_files:
         if file.type == "application/pdf":
             reader = PyPDF2.PdfReader(file)
-            text = "".join([p.extract_text() or '' for p in reader.pages])
+            raw = "".join([page.extract_text() or '' for page in reader.pages])
         else:
-            text = file.read().decode("utf-8")
-        docs.append(text)
+            raw = file.read().decode("utf-8")
+        raw_texts.append(raw)
     # Split into chunks
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-    chunks = splitter.split_text("\n".join(docs))
-    # Build FAISS index
-    index = FAISS.from_texts(chunks, embeddings)
+    chunks = []
+    for txt in raw_texts:
+        chunks.extend(splitter.split_text(txt))
+
+    # Generate embeddings and build FAISS index
+    embeddings = [get_embedding(c, engine="text-embedding-ada-002") for c in chunks]
+    dimension = len(embeddings[0])
+    index = faiss.IndexFlatL2(dimension)
+    index.add(np.array(embeddings, dtype='float32'))
+
+    # Store in session
     st.session_state.faiss_index = index
+    st.session_state.text_chunks = chunks
     st.sidebar.success(f"Indexed {len(chunks)} chunks!")
 
-# Main: QA interface
+# Main QA interface
 st.header("💬 Ask a Question")
 if st.session_state.faiss_index is None:
-    st.info("Upload and index documents in the sidebar first.")
+    st.info("Upload and 'Index Documents' in the sidebar first.")
 else:
     query = st.text_input("Enter your question:")
     if st.button("Answer me") and query:
-        with st.spinner("Retrieving relevant passages and generating answer…"):
-            retriever = st.session_state.faiss_index.as_retriever(search_kwargs={"k": 4})
-            llm = OpenAI(api_key=openai_api_key, model_name="gpt-3.5-turbo", temperature=0.1)
-            qa_chain = RetrievalQA.from_chain_type(
-                llm=llm,
-                chain_type="stuff",
-                retriever=retriever,
-                return_source_documents=True
+        with st.spinner("Retrieving and generating answer…"):
+            # Embed query and search
+            q_emb = get_embedding(query, engine="text-embedding-ada-002")
+            D, I = st.session_state.faiss_index.search(
+                np.array([q_emb], dtype='float32'), k=4
             )
-            result = qa_chain(query)
-            answer = result["result"]
-            sources = result["source_documents"]
+            retrieved = [st.session_state.text_chunks[i] for i in I[0]]
+            # Compose prompt
+            context = "\n---\n".join(retrieved)
+            prompt = f"Use the context below to answer the question.\nContext:\n{context}\n\nQuestion: {query}\nAnswer:"  
+            # Call OpenAI Chat
+            resp = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that uses provided context."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.1,
+                max_tokens=500,
+            )
+            answer = resp.choices[0].message.content
         st.subheader("Answer:")
         st.write(answer)
         st.subheader("Source Passages:")
-        for doc in sources:
-            st.markdown(f"> {doc.page_content[:500]}...")
+        for chunk in retrieved:
+            st.markdown(f"> {chunk[:300]}...")
+
+# Footer
+st.markdown("---")
+st.write("Run with: `streamlit run app.py`. Requires `openai`, `faiss-cpu`, `PyPDF2`, and `langchain`. ")
