@@ -1,5 +1,6 @@
 import streamlit as st
 import random
+import pandas as pd
 
 # Question generators for school-leaver math level
 
@@ -60,7 +61,7 @@ def generate_random_question():
     ]
     return random.choice(generators)()
 
-# Initialize or reset session state
+# Initialize or reset session state for questions and metrics
 if "question" not in st.session_state or st.button("New Question", key="new_question_init"):
     q, sol, hint_list = generate_random_question()
     st.session_state.question = q
@@ -68,8 +69,13 @@ if "question" not in st.session_state or st.button("New Question", key="new_ques
     st.session_state.hints = hint_list
     st.session_state.hint_index = 0
     st.session_state.completed = False
-    st.session_state.user_answer = None
+    st.session_state.user_answer = 0.0
+    # Metrics lists
+    st.session_state.conceptual = []
+    st.session_state.contextual = []
+    st.session_state.learning = []
 
+# Title and question display
 st.title("📚 Interactive Math Word Problems")
 st.subheader("Try to solve this word problem:")
 st.write(f"**{st.session_state.question}**")
@@ -78,7 +84,7 @@ st.write(f"**{st.session_state.question}**")
 st.markdown("---")
 col1, col2 = st.columns([3, 1])
 with col1:
-    user_input = st.number_input("Your answer:", value=0.0, key="user_answer")
+    user_input = st.number_input("Your answer:", value=st.session_state.user_answer, key="user_answer")
 with col2:
     if st.button("Get Hint", key="get_hint") and not st.session_state.completed:
         if st.session_state.hint_index < len(st.session_state.hints):
@@ -88,13 +94,27 @@ with col2:
         else:
             st.warning("No more hints available.")
 
+# Check answer and update metrics
 if st.button("Check Answer", key="check_answer") and not st.session_state.completed:
     try:
-        if abs(user_input - st.session_state.solution) < 1e-3:
+        correct = abs(user_input - st.session_state.solution) < 1e-3
+        if correct:
             st.success("🎉 Correct! Great job.")
             st.session_state.completed = True
         else:
             st.error("That’s not quite right. Try again or get a hint!")
+        # Compute metrics
+        # Conceptual: score = 1 - (hints used / total hints)
+        conceptual_score = max(0, 1 - st.session_state.hint_index / len(st.session_state.hints))
+        # Contextual: correct on first attempt without hints
+        contextual_score = 1.0 if correct and st.session_state.hint_index == 0 else 0.0
+        # Learning: running average of conceptual scores
+        prev = st.session_state.learning[-1] if st.session_state.learning else 0.0
+        learning_score = (prev + conceptual_score) / 2 if st.session_state.learning else conceptual_score
+        # Append to session lists
+        st.session_state.conceptual.append(conceptual_score)
+        st.session_state.contextual.append(contextual_score)
+        st.session_state.learning.append(learning_score)
     except Exception:
         st.error("Please enter a valid number.")
 
@@ -103,8 +123,19 @@ if st.session_state.completed:
     st.balloons()
     st.write(f"The correct answer was **{st.session_state.solution}**.")
     if st.button("New Question", key="new_question_completed"):
-        # Clear question to trigger new one
         del st.session_state["question"]
 
+# Display metrics graphs if any data exists
+if st.session_state.conceptual:
+    st.markdown("---")
+    st.subheader("Progress Metrics")
+    df = pd.DataFrame({
+        "Conceptual Understanding": st.session_state.conceptual,
+        "Contextual Reasoning": st.session_state.contextual,
+        "Learning": st.session_state.learning,
+    })
+    st.line_chart(df)
+
+# Footer
 st.markdown("---")
 st.write("Run with: `streamlit run streamlit_math_tutor.py`. No API key needed.")
