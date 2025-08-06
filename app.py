@@ -61,7 +61,7 @@ def generate_random_question():
     return random.choice(generators)()
 
 # Initialize or reset session state
-if "question" not in st.session_state or st.button("New Question"):
+if "question" not in st.session_state or st.button("New Question", key="new_question_init"):
     q, sol, hint_list = generate_random_question()
     st.session_state.question = q
     st.session_state.solution = sol
@@ -80,7 +80,7 @@ col1, col2 = st.columns([3, 1])
 with col1:
     user_input = st.number_input("Your answer:", value=0.0, key="user_answer")
 with col2:
-    if st.button("Get Hint") and not st.session_state.completed:
+    if st.button("Get Hint", key="get_hint") and not st.session_state.completed:
         if st.session_state.hint_index < len(st.session_state.hints):
             hint = st.session_state.hints[st.session_state.hint_index]
             st.info(f"Hint {st.session_state.hint_index + 1}: {hint}")
@@ -88,7 +88,7 @@ with col2:
         else:
             st.warning("No more hints available.")
 
-if st.button("Check Answer") and not st.session_state.completed:
+if st.button("Check Answer", key="check_answer") and not st.session_state.completed:
     try:
         if abs(user_input - st.session_state.solution) < 1e-3:
             st.success("🎉 Correct! Great job.")
@@ -102,9 +102,9 @@ if st.button("Check Answer") and not st.session_state.completed:
 if st.session_state.completed:
     st.balloons()
     st.write(f"The correct answer was **{st.session_state.solution}**.")
-    if st.button("New Question"):
-        # Trigger rerun for a new question
-        st.session_state.pop("question")
+    if st.button("New Question", key="new_question_completed"):
+        # Clear question to trigger new one
+        del st.session_state["question"]
 
 st.markdown("---")
 st.write("Run with: `streamlit run streamlit_math_tutor.py`. No API key needed.")
