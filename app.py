@@ -18,7 +18,8 @@ import streamlit as st
 # =========================
 # 1) Open, no-key sources
 # =========================
-GRANTS_GOV_HEALTH_RSS = "https://www.grants.gov/rss/GG_HealthCategory.xml"  # Health-category grants
+# GRANTS_GOV_HEALTH_RSS = "https://www.grants.gov/rss/GG_HealthCategory.xml"  # Health-category grants
+GRANTS_GOV_HEALTH_RSS = "https://www.grants.gov/search-grants"  # Health-category grants
 # NIH "All Active FOAs" XML. (Listed on NIH's XML feeds page.)
 NIH_ALL_ACTIVE_FOAS_XML = "https://grants.nih.gov/web_services/XML/NIH_Sponsored_FOAs.xml"
 
