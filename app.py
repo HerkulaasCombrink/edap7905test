@@ -3,27 +3,32 @@
 # Pulls from open public feeds only and shows deadlines nearest first.
 
 import re
-import io
-import time
 import html
 import requests
 import feedparser
 import pandas as pd
 from bs4 import BeautifulSoup
 from dateutil import parser as dateparser
-from datetime import datetime, timezone
+from datetime import datetime, date, timezone  # <-- import date
 import pytz
 import streamlit as st
+
+# Put page config first (Streamlit best practice)
+st.set_page_config(page_title="CPEMPH Funding Finder (no DB)", layout="wide")
 
 # =========================
 # 1) Open, no-key sources
 # =========================
-# GRANTS_GOV_HEALTH_RSS = "https://www.grants.gov/rss/GG_HealthCategory.xml"  # Health-category grants
-GRANTS_GOV_HEALTH_RSS = "https://www.grants.gov/search-grants"  # Health-category grants
-# NIH "All Active FOAs" XML. (Listed on NIH's XML feeds page.)
+GRANTS_GOV_HEALTH_RSS = "https://www.grants.gov/rss/GG_HealthCategory.xml"  # Health-category grants
 NIH_ALL_ACTIVE_FOAS_XML = "https://grants.nih.gov/web_services/XML/NIH_Sponsored_FOAs.xml"
 
 SA_TZ = pytz.timezone("Africa/Johannesburg")
+
+# Simple HTTP session with a UA for friendlier servers
+SESSION = requests.Session()
+SESSION.headers.update({
+    "User-Agent": "Mozilla/5.0 (FundingFinder/1.0; +https://streamlit.io)"
+})
 
 # =========================
 # Helpers
@@ -33,7 +38,7 @@ def _coerce_date(s):
     if not s:
         return None
     try:
-        dt = dateparser.parse(s, fuzzy=True)
+        dt = dateparser.parse(str(s), fuzzy=True)
         if dt is None:
             return None
         return dt.date()
@@ -81,14 +86,18 @@ def fetch_grants_gov_health():
     Parse Grants.gov Health RSS (open, no key).
     Returns list of dicts with title, link, agency, posted, deadline, summary, source.
     """
-    feed = feedparser.parse(GRANTS_GOV_HEALTH_RSS)
     rows = []
+    try:
+        feed = feedparser.parse(GRANTS_GOV_HEALTH_RSS)
+    except Exception as e:
+        st.warning(f"Could not parse Grants.gov RSS ({e}).")
+        return rows
+
     for it in feed.entries:
         title = it.get("title")
         link = it.get("link")
         summary = html.unescape(_first_nonempty(it.get("summary"), it.get("description"), ""))
 
-        # Try several possible fields for date-like values, then fall back to scanning summary
         closing_raw = _first_nonempty(
             it.get("closingdate"), it.get("closingDate"), it.get("closes"),
             it.get("closedate"), it.get("close_date")
@@ -100,6 +109,9 @@ def fetch_grants_gov_health():
         posted = _coerce_date(posted_raw)
 
         agency = _first_nonempty(it.get("agency"), it.get("author"), "")
+        if not (title and link):
+            continue
+
         rows.append({
             "source": "Grants.gov (Health RSS)",
             "title": title,
@@ -116,50 +128,44 @@ def fetch_grants_gov_health():
 def fetch_nih_active_foas():
     """
     Parse NIH Guide 'All Active FOAs' XML (open, no key).
-    NIH publishes per-IC feeds; this endpoint aggregates NIH-sponsored FOAs.
-    Structure can vary slightly by IC, so we parse defensively.
     """
     rows = []
     try:
-        resp = requests.get(NIH_ALL_ACTIVE_FOAS_XML, timeout=30)
+        resp = SESSION.get(NIH_ALL_ACTIVE_FOAS_XML, timeout=30)
         resp.raise_for_status()
     except Exception as e:
-        # If NIH XML is unreachable, return an empty list with a note
         st.warning(f"Could not reach NIH FOA XML ({e}). Showing other sources only.")
         return rows
 
-    soup = BeautifulSoup(resp.content, "xml")
+    try:
+        soup = BeautifulSoup(resp.content, "xml")  # requires lxml
+    except Exception as e:
+        st.warning(f"XML parsing failed ({e}).")
+        return rows
 
-    # Possible record tag names seen in NIH feeds
     record_candidates = soup.find_all(["FOA", "Row", "row", "Record", "record", "notice", "Opportunity"])
     if not record_candidates:
-        # fallback: treat children of root as records
         record_candidates = soup.find_all(recursive=False)
 
     for rec in record_candidates:
-        # Try common tag names for these fields:
         title = _first_nonempty(
             getattr(rec.find("Title"), "text", None),
             getattr(rec.find("title"), "text", None),
             getattr(rec.find("Summary"), "text", None),
             getattr(rec.find("summary"), "text", None),
         )
-
         link = _first_nonempty(
             getattr(rec.find("Url"), "text", None),
             getattr(rec.find("URL"), "text", None),
             getattr(rec.find("Link"), "text", None),
             getattr(rec.find("link"), "text", None),
         )
-
         summary = _first_nonempty(
             getattr(rec.find("Summary"), "text", None),
             getattr(rec.find("Description"), "text", None),
             getattr(rec.find("summary"), "text", None),
             getattr(rec.find("description"), "text", None),
         )
-
-        # Deadlines are variously named
         deadline = _coerce_date(_first_nonempty(
             getattr(rec.find("ExpirationDate"), "text", None),
             getattr(rec.find("ExpireDate"), "text", None),
@@ -173,15 +179,12 @@ def fetch_nih_active_foas():
             getattr(rec.find("PostedDate"), "text", None),
             getattr(rec.find("OpenDate"), "text", None),
         ))
-
         agency = _first_nonempty(
             getattr(rec.find("ICName"), "text", None),
             getattr(rec.find("Agency"), "text", None),
             getattr(rec.find("InstituteCenter"), "text", None),
             "NIH"
         )
-
-        # Skip if no meaningful content
         if not (title and link):
             continue
 
@@ -195,13 +198,11 @@ def fetch_nih_active_foas():
             "summary": (summary or "").strip(),
             "sa_international_ok": _looks_sa_friendly(summary),
         })
-
     return rows
 
 # =========================
 # 3) Streamlit UI
 # =========================
-st.set_page_config(page_title="CPEMPH Funding Finder (no DB)", layout="wide")
 st.title("CPEMPH Funding Finder — no DB, no keys (pull-only)")
 
 with st.sidebar:
@@ -213,8 +214,11 @@ with st.sidebar:
     terms = st.text_input("Search terms (comma-separated)", value=default_terms)
 
     only_future = st.checkbox("Only show open calls (deadline in future)", value=True)
-    sa_pref = st.checkbox("Boost internationally/LMIC-friendly items", value=True,
-                          help="Heuristic: looks for words like 'international', 'LMIC', 'foreign institutions', 'South Africa', etc.")
+    sa_pref = st.checkbox(
+        "Boost internationally/LMIC-friendly items",
+        value=True,
+        help="Heuristic: looks for words like 'international', 'LMIC', 'foreign institutions', 'South Africa', etc."
+    )
 
     st.markdown("---")
     run_btn = st.button("🔄 Refresh results")
@@ -222,7 +226,6 @@ with st.sidebar:
 if run_btn or "autostarted" not in st.session_state:
     st.session_state["autostarted"] = True
 
-    # Pull feeds
     all_rows = []
     if include_grants_gov:
         all_rows.extend(fetch_grants_gov_health())
@@ -231,63 +234,67 @@ if run_btn or "autostarted" not in st.session_state:
 
     df = pd.DataFrame(all_rows)
 
-    # If nothing fetched, show a friendly message
     if df.empty:
-        st.info("No results fetched (feed may be temporarily unavailable, or filters are too strict). Try again in a moment or relax filters.")
+        st.info("No results fetched (feed may be temporarily unavailable, or filters are too strict). Try again or relax filters.")
     else:
-        # Normalize text and apply search terms
-        def row_matches_terms(row, term_list):
-            blob = " ".join([str(row.get("title","")), str(row.get("summary","")), str(row.get("agency",""))]).lower()
-            return all(t.strip().lower() in blob for t in term_list if t.strip())
-
-        term_list = [t for t in (terms or "").split(",")]
-        if any(t.strip() for t in term_list):
+        # --- text filter ---
+        term_list = [t.strip().lower() for t in (terms or "").split(",") if t.strip()]
+        if term_list:
+            def row_matches_terms(row, term_list):
+                blob = " ".join([str(row.get("title","")), str(row.get("summary","")), str(row.get("agency",""))]).lower()
+                return all(t in blob for t in term_list)
             df = df[df.apply(lambda r: row_matches_terms(r, term_list), axis=1)]
 
-        # Only future deadlines?
+        # --- date filter ---
         today = datetime.now(SA_TZ).date()
+        if "deadline" not in df.columns:
+            df["deadline"] = None
+
         if only_future:
             # Keep rows where deadline exists and is >= today
-            df = df[df["deadline"].apply(lambda d: isinstance(d, datetime.date) and d >= today)]
+            df = df[df["deadline"].apply(lambda d: isinstance(d, date) and d >= today)]
 
-        # Sort: (SA-friendly first if chosen) then by deadline
-        if sa_pref and "sa_international_ok" in df.columns:
-            df = df.sort_values(by=["sa_international_ok", "deadline"], ascending=[False, True], kind="stable")
+        # If everything got filtered out, don't crash subsequent ops
+        if df.empty:
+            st.info("No items match your filters/terms. Try clearing the search or turning off 'Only open calls'.")
         else:
-            df = df.sort_values(by=["deadline"], ascending=[True], kind="stable")
+            # --- sort ---
+            if sa_pref and "sa_international_ok" in df.columns:
+                df = df.sort_values(by=["sa_international_ok", "deadline"], ascending=[False, True], kind="stable")
+            elif "deadline" in df.columns:
+                df = df.sort_values(by=["deadline"], ascending=[True], kind="stable")
 
-        # Clean up columns for display
-        show = df[[
-            "title", "agency", "deadline", "posted_date", "source", "link", "summary", "sa_international_ok"
-        ]].rename(columns={
-            "title": "Title",
-            "agency": "Funder / Agency",
-            "deadline": "Deadline",
-            "posted_date": "Posted",
-            "source": "Source",
-            "link": "Link",
-            "summary": "Summary",
-            "sa_international_ok": "Intl/LMIC-friendly (heuristic)"
-        })
+            # --- display ---
+            show = df[[
+                "title", "agency", "deadline", "posted_date", "source", "link", "summary", "sa_international_ok"
+            ]].rename(columns={
+                "title": "Title",
+                "agency": "Funder / Agency",
+                "deadline": "Deadline",
+                "posted_date": "Posted",
+                "source": "Source",
+                "link": "Link",
+                "summary": "Summary",
+                "sa_international_ok": "Intl/LMIC-friendly (heuristic)"
+            })
 
-        st.success(f"Found {len(show)} opportunities.")
-        st.caption("Tip: click a column header to sort; shift-click to sort by multiple columns.")
+            st.success(f"Found {len(show)} opportunities.")
+            st.caption("Tip: click a column header to sort; shift-click to sort by multiple columns.")
+            st.dataframe(show, use_container_width=True, hide_index=True)
 
-        # Interactive grid
-        st.dataframe(show, use_container_width=True, hide_index=True)
+            csv_bytes = show.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                "⬇️ Download results as CSV",
+                data=csv_bytes,
+                file_name="cpemph_funding_results.csv",
+                mime="text/csv"
+            )
 
-        # Download CSV
-        csv_bytes = show.to_csv(index=False).encode("utf-8")
-        st.download_button("⬇️ Download results as CSV", data=csv_bytes, file_name="cpemph_funding_results.csv", mime="text/csv")
-
-# =========================
-# Footer / About
-# =========================
 with st.expander("About the data / disclaimers"):
     st.markdown("""
 - **Sources used (no keys required):**
   - Grants.gov **Health category RSS** (public).  
-  - NIH Guide **All Active FOAs** XML (public); NIH also offers Guide content via **RSS**.  
+  - NIH Guide **All Active FOAs** XML (public).  
 - We heuristic-parse deadlines and eligibility text; always click through to the official page before applying.
-- “International/LMIC-friendly” is a *best-effort text check* (e.g., looks for ‘international’, ‘foreign institutions’, ‘LMIC’, ‘South Africa’, etc.).
+- “International/LMIC-friendly” is a *best-effort text check* only.
     """)
