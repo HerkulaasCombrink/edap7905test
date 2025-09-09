@@ -1,8 +1,6 @@
-streamlit>=1.33
-pandas>=2.0
-requests>=2.31
-feedparser>=6.0
-beautifulsoup4>=4.12
-lxml>=5.2
-python-dateutil>=2.9
-pytz>=2024.1
+streamlit==1.37.0
+pandas==2.2.2
+numpy==1.26.4
+matplotlib==3.9.2
+seaborn==0.13.2
+scikit-learn==1.5.1
