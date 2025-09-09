@@ -80,30 +80,94 @@ def split_cat_num(df):
     return num_cols, cat_cols
 
 def preprocess_tokenize(X, n_bins=6):
-    """Fill missing, bin numerics to ordinal ints, encode categoricals to ints."""
+    """
+    Robust tokenisation:
+      - Coerce every column to either numeric (float) or categorical (string)
+      - Clean NaNs/inf
+      - For numeric: handle constants / low-unique / all-NaN
+      - Bin numerics safely (cap bins by unique count; fallback to qcut)
+      - Encode categoricals with LabelEncoder
+    Returns:
+      X_proc (int codes per column), encoders, num_cols, cat_cols
+    """
     X = X.copy()
-    # fill missing
+
+    # 1) Clean obvious NaNs and strings like "None"/"nan"
+    X = X.replace(["None", "none", "NaN", "nan", "NULL", "null", ""], np.nan)
+
+    # 2) Decide numeric vs categorical by attempt-to-coerce (robust)
+    num_cols, cat_cols = [], []
     for c in X.columns:
-        if pd.api.types.is_numeric_dtype(X[c]):
-            X[c] = pd.to_numeric(X[c], errors="coerce")
-            X[c] = X[c].fillna(X[c].median())
+        # try numeric coercion on a sample to decide
+        coerced = pd.to_numeric(X[c], errors="coerce")
+        # consider numeric if at least 80% successfully coercible OR dtype already numeric/bool
+        is_mostly_num = (coerced.notna().mean() >= 0.8) or pd.api.types.is_numeric_dtype(X[c]) or pd.api.types.is_bool_dtype(X[c])
+        if is_mostly_num:
+            num_cols.append(c)
         else:
-            X[c] = X[c].astype(str).fillna("__NA__")
+            cat_cols.append(c)
 
-    num_cols, cat_cols = split_cat_num(X)
-    encoders = {}
     X_proc = pd.DataFrame(index=X.index)
+    encoders = {}
 
-    # Numerics: bin -> ordinal ints
+    # 3) Handle numeric columns
     for c in num_cols:
-        kb = KBinsDiscretizer(n_bins=n_bins, encode="ordinal", strategy="quantile")
-        X_proc[c] = kb.fit_transform(X[[c]]).astype(int).ravel()
-        encoders[c] = kb
-    # Categoricals: label-encode
+        col = pd.to_numeric(X[c], errors="coerce")
+        # replace infs
+        col = col.replace([np.inf, -np.inf], np.nan)
+        # if all NaN → make zeros and mark as constant
+        if col.notna().sum() == 0:
+            # constant code 0
+            X_proc[c] = 0
+            encoders[c] = {"type": "constant_all_nan"}
+            continue
+
+        # fill remaining NaNs with median
+        med = float(col.median())
+        col = col.fillna(med)
+
+        unique_vals = np.unique(col.values)
+        uniq_n = unique_vals.size
+
+        # constant column → single bin 0
+        if uniq_n == 1:
+            X_proc[c] = 0
+            encoders[c] = {"type": "constant", "value": float(unique_vals[0])}
+            continue
+
+        # cap bins by #unique; need at least 2 bins
+        bins = int(max(2, min(n_bins, uniq_n)))
+
+        # try KBinsDiscretizer first
+        try:
+            from sklearn.preprocessing import KBinsDiscretizer
+            kb = KBinsDiscretizer(n_bins=bins, encode="ordinal", strategy="quantile")
+            X_proc[c] = kb.fit_transform(col.to_frame()).astype(int).ravel()
+            encoders[c] = {"type": "kbin", "bins": bins, "strategy": "quantile", "kb": kb}
+        except Exception:
+            # robust fallback: pandas qcut with duplicates dropped
+            try:
+                cats = pd.qcut(col, q=bins, duplicates="drop")
+                X_proc[c] = cats.cat.codes.astype(int)
+                encoders[c] = {"type": "qcut", "bins": bins, "edges": list(cats.cat.categories.astype(str))}
+            except Exception:
+                # final fallback: rank-based 2 bins
+                ranks = pd.qcut(col.rank(method="average"), q=2, duplicates="drop")
+                X_proc[c] = ranks.cat.codes.astype(int)
+                encoders[c] = {"type": "fallback_rank_q2"}
+
+    # 4) Handle categorical columns
+    from sklearn.preprocessing import LabelEncoder
     for c in cat_cols:
+        s = X[c].astype(str)  # ensure string
+        s = s.fillna("__NA__")
         le = LabelEncoder()
-        X_proc[c] = le.fit_transform(X[c].astype(str))
-        encoders[c] = le
+        X_proc[c] = le.fit_transform(s)
+        encoders[c] = {"type": "labelencoder", "classes_": list(le.classes_)}
+
+    # Ensure integer dtype for all processed columns
+    for c in X_proc.columns:
+        X_proc[c] = pd.to_numeric(X_proc[c], errors="coerce").fillna(0).astype(int)
 
     return X_proc, encoders, num_cols, cat_cols
 
