@@ -8,38 +8,29 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from sklearn.model_selection import train_test_split, GridSearchCV, learning_curve
-from sklearn.preprocessing import KBinsDiscretizer, LabelEncoder, StandardScaler
-from sklearn.pipeline import make_pipeline
-from sklearn.metrics import confusion_matrix, accuracy_score, f1_score
-
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
-
+from sklearn.metrics import accuracy_score, f1_score, confusion_matrix
 import plotly.express as px
 import plotly.graph_objects as go
 
 # =========================
-# UI + Sidebar Controls
+# Page config
 # =========================
-st.set_page_config(page_title="Void-Learning (Streamlit)", layout="wide")
-st.title("Void-Learning Pipeline — Streamlit (with hashed-state Q-learning)")
+st.set_page_config(page_title="Void-Learning (γ=0 Q-learning)", layout="wide")
+st.title("📦 Void-Learning — Hashed State Tabular Q-Learning (γ=0)")
+st.caption("Upload CSV(s) • Choose target • Auto-detect types • Train RL • Assess learned vs void • Export CSVs")
 
+# =========================
+# Sidebar controls (match your Colab hyperparams)
+# =========================
 with st.sidebar:
-    st.header("Dataset")
-    ds_choice = st.radio("Choose", ["Iris (built-in)", "Titanic (seaborn)", "Upload CSV"])
-    st.caption("Upload: a single CSV or two files named with 'train' / 'test' anywhere in the filename.")
+    st.header("Upload")
+    up_files = st.file_uploader("Upload one CSV (auto split) OR 'train' + 'test' CSVs", type=["csv"], accept_multiple_files=True)
     st.markdown("---")
-
-    st.header("Preprocessing")
-    n_bins = st.slider("Numeric bin count", 3, 12, 6, 1)
-    low_card_as_cat = st.checkbox("Treat low-cardinality numeric as categorical", True)
-    low_card_threshold = st.slider("Low-cardinality threshold", 5, 100, 20, 1)
+    st.header("Type Detection")
+    LOW_CARD_AS_CATEGORICAL = st.checkbox("Treat low-cardinality numeric as categorical", value=True)
+    LOW_CARD_THRESHOLD = st.slider("Low-cardinality threshold", 5, 100, 20, 1)
     st.markdown("---")
-
-    st.header("Void-Learning (γ=0 Q-learning)")
+    st.header("Q-learning (γ=0)")
     episodes = st.slider("Episodes", 5, 200, 60, 5)
     eps0 = st.slider("ε₀ (start exploration)", 0.01, 0.9, 0.30, 0.01)
     eps_min = st.slider("εmin", 0.0, 0.5, 0.02, 0.01)
@@ -47,69 +38,74 @@ with st.sidebar:
     optimistic_init = st.slider("Optimistic init (Q₀)", 0.0, 1.0, 0.10, 0.01)
     min_visits = st.slider("Min visits per state", 1, 200, 8, 1)
     margin_tau = st.slider("Margin threshold τ", 0.01, 1.0, 0.15, 0.01)
+    n_bins = st.slider("Numeric bin count", 2, 12, 6, 1)
     hash_mod = st.select_slider("Hash modulus (state table size)", options=[50_000, 100_000, 200_000, 500_000, 1_000_000], value=200_000)
-    st.markdown("---")
-
-    st.header("Pruning")
-    prune_thresh = st.slider("Mean token void rate ≥", 0.1, 1.0, 0.50, 0.05)
-    st.markdown("---")
 
 # =========================
-# Helpers: Data Loading
+# Helpers: detect upload mode
 # =========================
-def load_builtin_iris() -> pd.DataFrame:
-    from sklearn.datasets import load_iris
-    iris = load_iris(as_frame=True)
-    return iris.frame.copy()  # includes 'target'
-
-def load_builtin_titanic() -> pd.DataFrame | None:
-    try:
-        import seaborn as sns
-        return sns.load_dataset("titanic")
-    except Exception:
-        return None
-
-def load_uploads() -> tuple[pd.DataFrame | None, pd.DataFrame | None, dict]:
-    """Returns (df_train, df_test, info) where df_test can be None."""
-    up_files = st.file_uploader("Upload one CSV (auto split) OR 'train' + 'test' CSVs", type=["csv"], accept_multiple_files=True)
-    if not up_files:
+def read_uploads(files) -> tuple[pd.DataFrame|None, pd.DataFrame|None, dict]:
+    if not files:
         return None, None, {}
-    csv_names = [f.name for f in up_files if f.name.lower().endswith(".csv")]
-    if not csv_names:
-        st.error("No CSV files detected.")
+    csv = {f.name: f.read() for f in files if f.name.lower().endswith(".csv")}
+    if not csv:
         return None, None, {}
-    # Detect train/test
-    has_train = any("train" in n.lower() for n in csv_names)
-    has_test  = any("test"  in n.lower() for n in csv_names)
-    name_to_bytes = {f.name: f.read() for f in up_files}
-
+    names = list(csv.keys())
+    has_train = any("train" in n.lower() for n in names)
+    has_test  = any("test"  in n.lower() for n in names)
     if has_train and has_test:
-        train_name = next(n for n in csv_names if "train" in n.lower())
-        test_name  = next(n for n in csv_names if "test"  in n.lower())
-        df_train = pd.read_csv(io.BytesIO(name_to_bytes[train_name]))
-        df_test  = pd.read_csv(io.BytesIO(name_to_bytes[test_name]))
-        st.success(f"Detected train/test: {train_name} / {test_name}")
+        train_name = next(n for n in names if "train" in n.lower())
+        test_name  = next(n for n in names if "test"  in n.lower())
+        df_train = pd.read_csv(io.BytesIO(csv[train_name]))
+        df_test  = pd.read_csv(io.BytesIO(csv[test_name]))
         return df_train, df_test, {"mode": "train_test", "train": train_name, "test": test_name}
+    # single CSV
+    df_all = pd.read_csv(io.BytesIO(csv[names[0]]))
+    return df_all, None, {"mode": "single", "file": names[0]}
+
+df_train, df_test, info = read_uploads(up_files)
+
+if df_train is None and df_test is None:
+    st.info("⬆️ Upload one CSV (auto split) OR two CSVs with 'train' and 'test' in filenames.")
+    st.stop()
+
+with st.expander("Upload summary", expanded=True):
+    if info.get("mode") == "train_test":
+        st.success(f"Detected train/test: **{info['train']}** / **{info['test']}**")
+        st.write("Train shape:", df_train.shape, " | Test shape:", df_test.shape)
     else:
-        df_all = pd.read_csv(io.BytesIO(name_to_bytes[csv_names[0]]))
-        st.info(f"Detected single CSV: {csv_names[0]} (will create a split)")
-        return df_all, None, {"mode": "single", "file": csv_names[0]}
+        st.info(f"Detected single CSV: **{info.get('file')}** (will create a 75/25 split)")
+        st.write("All data shape:", df_train.shape)
 
 # =========================
-# Auto-type detection (matches your Colab logic)
+# 1) Target selection
 # =========================
-def auto_detect_types(df: pd.DataFrame, target: str,
-                      low_card_as_cat: bool = True, low_card_threshold: int = 20) -> tuple[list[str], list[str]]:
+df_show = df_train if info.get("mode") == "train_test" else df_train
+st.subheader("1) Data & Target")
+st.dataframe(df_show.head(10), use_container_width=True)
+
+default_target = df_show.columns[-1]
+target_name = st.selectbox("🎯 Select target column", options=df_show.columns.tolist(),
+                           index=list(df_show.columns).index(default_target))
+
+if target_name not in df_show.columns:
+    st.error(f"Target '{target_name}' not found.")
+    st.stop()
+
+# =========================
+# 2) Auto-detect numeric vs categorical (your rules)
+# =========================
+def auto_detect_types(df: pd.DataFrame, target: str):
     cats, nums = [], []
     for c in df.columns:
-        if c == target: 
+        if c == target:
             continue
         if df[c].dtype == 'O':
             cats.append(c)
         else:
-            if low_card_as_cat:
+            if LOW_CARD_AS_CATEGORICAL:
                 nunique = df[c].nunique(dropna=True)
-                if nunique <= low_card_threshold:
+                if nunique <= LOW_CARD_THRESHOLD:
                     cats.append(c)
                 else:
                     nums.append(c)
@@ -117,39 +113,60 @@ def auto_detect_types(df: pd.DataFrame, target: str,
                 nums.append(c)
     return nums, cats
 
+if info.get("mode") == "train_test":
+    nums, cats = auto_detect_types(df_train, target_name)
+else:
+    nums, cats = auto_detect_types(df_train, target_name)
+
+st.write("*Detected numeric:*", nums)
+st.write("*Detected categorical:*", cats)
+
 # =========================
-# Prepare X/y (matches your Colab logic)
+# 3) Train/test split if single CSV
 # =========================
-def prepare_xy(df: pd.DataFrame, target: str, num_cols: list[str], cat_cols: list[str]) -> tuple[np.ndarray, np.ndarray, list[str], list[str]]:
+if info.get("mode") == "single":
+    TRAIN_FRACTION = 0.75
+    df_all = df_train.sample(frac=1.0, random_state=42).reset_index(drop=True)
+    n_train = int(len(df_all) * TRAIN_FRACTION)
+    df_train = df_all.iloc[:n_train].reset_index(drop=True)
+    df_test  = df_all.iloc[n_train:].reset_index(drop=True)
+    st.success(f"Split single CSV into train {df_train.shape} and test {df_test.shape}.")
+
+# =========================
+# 4) Build matrices (X, y) and encodings (your logic)
+# =========================
+def prepare_xy(df: pd.DataFrame, target: str, num_cols: T.List[str], cat_cols: T.List[str]):
     df = df.dropna(subset=[target]).copy()
     y_raw = df[target].values
     X = df[num_cols + cat_cols].copy()
 
-    # Fill numeric
     for c in num_cols:
         X[c] = pd.to_numeric(X[c], errors="coerce")
         X[c] = X[c].fillna(X[c].median())
-    # Fill categorical
     for c in cat_cols:
         X[c] = X[c].astype(str).fillna("__NA__")
 
-    # Label map y to 0..K-1
     if X.shape[0] == 0:
         raise ValueError("No rows left after cleaning.")
-    if X[target].dtype == 'O' or y_raw.dtype.kind not in "iu":
+    if (y_raw.dtype == 'O') or (getattr(y_raw, "dtype", None) is not None and y_raw.dtype.kind not in "iu"):
         classes, y_idx = np.unique(y_raw, return_inverse=True)
         y = y_idx.astype(int)
         action_names = [str(c) for c in classes]
     else:
         classes = np.unique(y_raw)
-        mapping = {v: i for i, v in enumerate(classes)}
+        mapping = {v:i for i,v in enumerate(classes)}
         y = np.array([mapping[v] for v in y_raw], dtype=int)
         action_names = [str(v) for v in classes]
 
     return X.values, y, list(X.columns), action_names
 
+X_train, y_train, feature_cols, action_names = prepare_xy(df_train, target_name, nums, cats)
+X_test,  y_test,  _,             _           = prepare_xy(df_test,  target_name, nums, cats)
+n_classes = int(np.unique(y_train).size)
+cat_idx = [feature_cols.index(c) for c in cats if c in feature_cols]
+
 # =========================
-# Hashed State Encoder (from your Colab code)
+# 5) Encoder: hash + bin (your code)
 # =========================
 @dataclass
 class HashedStateEncoder:
@@ -201,7 +218,7 @@ class HashedStateEncoder:
         return state_id, tuple(tokens)
 
 # =========================
-# Q-learning (γ=0) + predict (from your Colab code)
+# 6) Tabular Q-learning (γ=0) (your code)
 # =========================
 @dataclass
 class TQCHyperparams:
@@ -232,12 +249,11 @@ def inverse_freq_weights(y: np.ndarray, n_classes: int) -> np.ndarray:
 def train_void_learning(
     X: np.ndarray, y: np.ndarray, n_classes: int,
     encoder: HashedStateEncoder, feature_cols: T.List[str],
-    hp: TQCHyperparams, action_names: T.List[str],
-    categorical_idx: list[int]
+    hp: TQCHyperparams, action_names: T.List[str]
 ) -> TQCModel:
     rng = np.random.default_rng(hp.seed)
     class_weights = inverse_freq_weights(y, n_classes)
-    encoder.fit(X, columns=feature_cols, categorical_idx=categorical_idx)
+    encoder.fit(X, columns=feature_cols, categorical_idx=cat_idx)
 
     Q = defaultdict(lambda: np.full(n_classes, hp.optimistic_init, dtype=float))
     visits = defaultdict(lambda: np.zeros(n_classes, dtype=int))
@@ -245,8 +261,8 @@ def train_void_learning(
     idx = np.arange(len(X))
     eps = hp.eps0
 
-    total_steps = hp.episodes * len(X)
-    prog = st.progress(0)
+    total = hp.episodes * len(X)
+    bar = st.progress(0)
     step = 0
 
     for ep in range(hp.episodes):
@@ -262,10 +278,10 @@ def train_void_learning(
             r = class_weights[y[i]] if a == y[i] else -class_weights[y[i]]
             visits[sid][a] += 1
             alpha = 1.0 / visits[sid][a]
-            Q[sid][a] += alpha * (r - Q[sid][a])  # γ=0
+            Q[sid][a] += alpha * (r - Q[sid][a])  # γ = 0
             step += 1
         eps = max(hp.eps_min, eps * hp.eps_decay)
-        prog.progress(min(100, int(100 * step / total_steps)))
+        bar.progress(int(100 * step / total))
 
     return TQCModel(
         Q=dict(Q), visits=dict(visits), encoder=encoder,
@@ -281,7 +297,7 @@ def predict(model: TQCModel, X: np.ndarray) -> np.ndarray:
     return yhat
 
 # =========================
-# Learnability & Void Tables (from your Colab code)
+# 7) Learnability assessment (your code)
 # =========================
 @dataclass
 class LearnabilityResult:
@@ -342,232 +358,26 @@ def assess_learnability(model: TQCModel, hp: TQCHyperparams) -> LearnabilityResu
     )
 
 # =========================
-# Plotly helpers
+# 8) Train + Evaluate RL
 # =========================
-def plot_cm_plotly(cm, labels, title):
-    fig = px.imshow(cm, x=labels, y=labels, color_continuous_scale="Blues",
-                    text_auto=True, aspect="auto")
-    fig.update_layout(title=title, xaxis_title="Predicted", yaxis_title="True")
-    return fig
-
-def plot_learning_curve_plotly(estimator, X_train, y_train, title):
-    train_sizes, train_scores, test_scores = learning_curve(
-        estimator, X_train, y_train, cv=3, n_jobs=-1,
-        train_sizes=np.linspace(0.2, 1.0, 5), shuffle=True, random_state=42
-    )
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=train_sizes, y=np.mean(train_scores, axis=1), mode="lines+markers", name="Train"))
-    fig.add_trace(go.Scatter(x=train_sizes, y=np.mean(test_scores, axis=1), mode="lines+markers", name="CV"))
-    fig.update_layout(title=title, xaxis_title="Train size", yaxis_title="Score")
-    return fig
-
-def df_to_download(df, filename, label):
-    csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button(label=label, data=csv, file_name=filename, mime="text/csv")
-
-# =========================
-# Model grids
-# =========================
-def model_grids():
-    return {
-        "KNN": (make_pipeline(StandardScaler(with_mean=True), KNeighborsClassifier()),
-                {"kneighborsclassifier__n_neighbors": [3, 5, 7]}),
-        "RF": (RandomForestClassifier(random_state=42),
-               {"n_estimators": [150, 300], "max_depth": [None, 10]}),
-        "LR": (make_pipeline(StandardScaler(with_mean=True),
-                             LogisticRegression(max_iter=3000, n_jobs=None, random_state=42)),
-               {"logisticregression__C": [0.5, 1.0, 2.0]}),
-        "SVM": (make_pipeline(StandardScaler(with_mean=True), SVC(probability=False, random_state=42)),
-                {"svc__C": [0.5, 1.0, 2.0], "svc__kernel": ["rbf", "linear"]}),
-    }
-
-def fit_and_report(X_train, X_test, y_train, y_test, label_prefix="Original"):
-    grids = model_grids()
-    results = []
-    pb = st.progress(0)
-    step, total = 0, len(grids)
-    class_labels = sorted(np.unique(y_test))
-
-    for name, (est, grid) in grids.items():
-        step += 1
-        with st.spinner(f"Training {name} — {label_prefix}"):
-            gs = GridSearchCV(est, grid, cv=3, n_jobs=-1, verbose=0)
-            gs.fit(X_train, y_train)
-            y_pred = gs.predict(X_test)
-            acc = accuracy_score(y_test, y_pred)
-            f1m = f1_score(y_test, y_pred, average="macro")
-            cm = confusion_matrix(y_test, y_pred, labels=class_labels)
-            st.plotly_chart(plot_cm_plotly(cm, class_labels, f"{name} — {label_prefix} (Confusion Matrix)"),
-                            use_container_width=True)
-            st.plotly_chart(plot_learning_curve_plotly(gs.best_estimator_, X_train, y_train,
-                                f"Learning Curve — {name} ({label_prefix})"),
-                            use_container_width=True)
-            results.append({"model": name,
-                            f"accuracy_{label_prefix.lower()}": acc,
-                            f"macroF1_{label_prefix.lower()}": f1m})
-        pb.progress(int(100 * step / total))
-    return pd.DataFrame(results)
-
-# =========================
-# 1) Data loading (built-ins or upload)
-# =========================
-st.subheader("1) Data Loading")
-
-if ds_choice == "Iris (built-in)":
-    df = load_builtin_iris()
-    st.success("Loaded Iris.")
-elif ds_choice == "Titanic (seaborn)":
-    df = load_builtin_titanic()
-    if df is None:
-        st.error("Could not load Titanic from seaborn. Use Upload CSV.")
-        st.stop()
-    st.success("Loaded Titanic.")
-else:
-    df_train_up, df_test_up, info = load_uploads()
-    if df_train_up is None:
-        st.info("Upload CSV(s) to continue.")
-        st.stop()
-    if info.get("mode") == "train_test":
-        df_train = df_train_up.copy()
-        df_test = df_test_up.copy()
-        df = pd.concat([df_train.assign(__split__="train"), df_test.assign(__split__="test")], axis=0, ignore_index=True)
-    else:
-        df = df_train_up.copy()
-    st.success("Upload(s) loaded.")
-
-st.dataframe(df.head(10), use_container_width=True)
-
-# =========================
-# 2) Target & Feature selection (dynamic)
-# =========================
-st.subheader("2) Target & Feature Selection")
-default_target = "target" if "target" in df.columns else ("survived" if "survived" in df.columns else df.columns[-1])
-target_name = st.selectbox("Select target", options=df.columns.tolist(),
-                           index=list(df.columns).index(default_target) if default_target in df.columns else len(df.columns)-1)
-
-# Candidate feature set
-candidate_features = [c for c in df.columns if c != target_name and c != "__split__"]
-use_all_btn = st.button("Use all other columns as features")
-if use_all_btn:
-    selected_features = candidate_features
-else:
-    selected_features = st.multiselect("Select feature columns", options=candidate_features, default=candidate_features)
-
-st.write(f"Target: `{target_name}` — #Features selected: {len(selected_features)}")
-
-# Train/test define
-if ds_choice == "Upload CSV" and "__split__" in df.columns:
-    df_train = df[df["__split__"] == "train"].drop(columns=["__split__"]).reset_index(drop=True)
-    df_test  = df[df["__split__"] == "test"].drop(columns=["__split__"]).reset_index(drop=True)
-elif ds_choice == "Upload CSV":
-    # single file: create split
-    df_all = df.sample(frac=1.0, random_state=42).reset_index(drop=True)
-    n_train = int(len(df_all) * 0.75)
-    df_train = df_all.iloc[:n_train].reset_index(drop=True)
-    df_test  = df_all.iloc[n_train:].reset_index(drop=True)
-else:
-    # built-ins: random split from current selection
-    df_all = df[selected_features + [target_name]].dropna(subset=[target_name]).copy()
-    df_train, df_test = train_test_split(df_all, test_size=0.25, random_state=42, stratify=df_all[target_name])
-
-# Type detection
-num_cols, cat_cols = auto_detect_types(df_train[selected_features + [target_name]],
-                                       target=target_name,
-                                       low_card_as_cat=low_card_as_cat,
-                                       low_card_threshold=low_card_threshold)
-st.write("*Detected numeric:*", num_cols)
-st.write("*Detected categorical:*", cat_cols)
-
-# Prepare X/y by your Colab logic
-X_train_np, y_train, feature_cols, action_names = prepare_xy(df_train[selected_features + [target_name]],
-                                                             target_name, num_cols, cat_cols)
-X_test_np,  y_test,  _,             _           = prepare_xy(df_test[selected_features + [target_name]],
-                                                             target_name, num_cols, cat_cols)
-n_classes = int(np.unique(y_train).size)
-cat_idx = [feature_cols.index(c) for c in cat_cols if c in feature_cols]
-
-# =========================
-# 3) Baseline classifiers (Original features)
-# =========================
-st.subheader("3) Baseline Classifiers (Original Features)")
-# For baseline classifiers, we’ll use the integer-coded matrix as-is:
-X_proc = pd.DataFrame(X_train_np, columns=feature_cols)
-X_proc_test = pd.DataFrame(X_test_np, columns=feature_cols)
-baseline_df = fit_and_report(X_proc, X_proc_test, y_train, y_test, label_prefix="Original")
-
-# =========================
-# 4) Void-Learning (hashed-state Q-learning, γ=0)
-# =========================
-st.subheader("4) Void-Learning (Hashed-State Tabular Q-learning, γ=0)")
-
-hp = TQCHyperparams(episodes=episodes, eps0=eps0, eps_min=eps_min,
-                    eps_decay=eps_decay, optimistic_init=optimistic_init,
-                    min_visits=min_visits, margin=margin_tau)
+st.subheader("3) Train RL policy (γ=0) and Evaluate")
+hp = TQCHyperparams(
+    episodes=episodes, eps0=eps0, eps_min=eps_min, eps_decay=eps_decay,
+    optimistic_init=optimistic_init, min_visits=min_visits, margin=margin_tau
+)
 encoder = HashedStateEncoder(n_bins=n_bins, hash_mod=hash_mod, categorical_idx=cat_idx)
-with st.spinner("Training Void-Learning ..."):
-    model = train_void_learning(X_train_np, y_train, n_classes, encoder, feature_cols, hp, action_names, categorical_idx=cat_idx)
 
-# Evaluate RL policy on test
-y_pred_rl = predict(model, X_test_np)
-acc_rl = accuracy_score(y_test, y_pred_rl)
-f1_rl = f1_score(y_test, y_pred_rl, average="macro")
-st.write(f"RL Policy — Test Accuracy: **{acc_rl:.4f}**, Macro-F1: **{f1_rl:.4f}**")
-cm_rl = confusion_matrix(y_test, y_pred_rl, labels=sorted(np.unique(y_test)))
-st.plotly_chart(plot_cm_plotly(cm_rl, sorted(np.unique(y_test)), "RL Policy — Confusion Matrix"), use_container_width=True)
+with st.spinner("Training Void-Learning (tabular Q-learning, γ=0)..."):
+    model = train_void_learning(X_train, y_train, n_classes, encoder, feature_cols, hp, action_names)
 
-# Learnability + Void tables (CSV)
-res = assess_learnability(model, hp)
-st.write("State summary (head):"); st.dataframe(res.state_summary.head(12), use_container_width=True)
-st.write("Feature-level void table (head):"); st.dataframe(res.feature_void_table.head(20), use_container_width=True)
+y_pred = predict(model, X_test)
+acc = accuracy_score(y_test, y_pred)
+f1m = f1_score(y_test, y_pred, average="macro")
+st.success(f"✅ RL Policy — Test Accuracy: **{acc:.4f}**  |  Macro-F1: **{f1m:.4f}**")
 
-c1, c2 = st.columns(2)
-with c1:
-    df_to_download(res.state_summary, "void_learning_state_summary.csv", "Download state summary (CSV)")
-with c2:
-    df_to_download(res.feature_void_table, "void_learning_feature_void_table.csv", "Download feature void table (CSV)")
-
-# Quick plots (counts + top tokens)
-counts = res.state_summary["label"].value_counts().reset_index()
-counts.columns = ["label", "count"]
-st.plotly_chart(px.bar(counts, x="label", y="count", title="Counts of learned vs void states"), use_container_width=True)
-
-top_tok = res.feature_void_table.sort_values("void_rate", ascending=False).head(15)
-st.plotly_chart(px.bar(top_tok, x="feature_token", y="void_rate", title="Top tokens by void rate").update_layout(xaxis_tickangle=45), use_container_width=True)
-
-# =========================
-# 5) Prune features (mean token void rate ≥ threshold)
-# =========================
-st.subheader("5) Pruning by Mean Token Void Rate")
-feat_means = res.feature_void_table.assign(feature=lambda d: d["feature_token"].str.split(":", n=1, expand=True)[0]).groupby("feature")["void_rate"].mean()
-pruned_features = feat_means[feat_means >= prune_thresh].index.tolist()
-st.write("Mean void rate per feature:"); st.dataframe(feat_means.reset_index().rename(columns={"void_rate": "mean_void_rate"}))
-if pruned_features:
-    st.success(f"Pruned features (≥ {prune_thresh}): {pruned_features}")
-else:
-    st.info("No features exceeded the prune threshold.")
-
-# Build pruned matrices
-keep_cols = [c for c in feature_cols if c not in pruned_features]
-X_train_p = pd.DataFrame(X_train_np, columns=feature_cols)[keep_cols].values
-X_test_p  = pd.DataFrame(X_test_np,  columns=feature_cols)[keep_cols].values
-
-# =========================
-# 6) Classifiers on Pruned features
-# =========================
-st.subheader("6) Classifiers (Void-Pruned Features)")
-pruned_df = fit_and_report(pd.DataFrame(X_train_p, columns=keep_cols),
-                           pd.DataFrame(X_test_p, columns=keep_cols),
-                           y_train, y_test, label_prefix="Pruned")
-
-# =========================
-# 7) Comparison table
-# =========================
-st.subheader("7) Comparison — Original vs Pruned (Accuracy / Macro-F1)")
-if not baseline_df.empty and not pruned_df.empty:
-    comp = pd.merge(baseline_df, pruned_df, on="model", how="outer")
-    comp["Δ accuracy"] = comp["accuracy_pruned"] - comp["accuracy_original"]
-    comp["Δ macroF1"] = comp["macroF1_pruned"] - comp["macroF1_original"]
-    st.dataframe(comp, use_container_width=True)
-    df_to_download(comp, "comparison_original_vs_pruned.csv", "Download comparison (CSV)")
-else:
-    st.write("Insufficient results to compare.")
+cm = confusion_matrix(y_test, y_pred, labels=sorted(np.unique(y_test)))
+fig_cm = px.imshow(cm, x=sorted(np.unique(y_test)), y=sorted(np.unique(y_test)),
+                   text_auto=True, color_continuous_scale="Blues",
+                   title="RL Policy — Confusion Matrix")
+fig_cm.update_layout(xaxis_title="Predicted", yaxis_title="True")
+s
